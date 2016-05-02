@@ -39,5 +39,32 @@ I should write an interface for this to the artificial go servers
 I should test it on the go database, that checks for best-moves.
 
 
+### Thoughts on ways to do this well.
+It seems like a good way to do training is to generate board positions that are ties, because that's not a real option. We'd want to push these boards towards winning or losing. There's two things about this: First, I need to look at CNN generation more closely. Second, I need to figure out a way to put a sparsity constraint on this, because I want to be able to sample the state space of time-in-game well.
+
+Also, it seems like making different CNNs for different board times is going to be a pretty tough ordeal. So, I'll start out by just having one, but hopefully I code it in a way that allows me to use subclasses of a model board.
+
+Also, since we're doing +1/-1 for black/white, I may need to think closely about how I want my layers to look. Because negative values aren't helpful with ReLus. On the other hand, maybe the weights, and having multiple channels, will solve that. Mainly the multiple channels part.
+
+
+
+I should also have a few different guys that I train. Maybe a very shallow NNet to start.
+
+I really want to figure out how to generate boards of a certain value. Look up something called deconvolutional neural networks
+
+Chinese scoring.
+
+NOT DONE: I'M WRITING A SPOT-WON-BY FUNCTION, THAT DETERMINES WHETHER A SPOT IS CONTROLLED
+BY ONE SIDE OR THE OTHER.
+
+Occasionally, I should do something that enforces symmetry, so that it's on the right path. I could easily generate symmetric games, and force both scores towards the average.
+That would be great actually, because there are 8 symmetries, which is a great way to make sure it really learns the meaning of go.
+
+
+
+AN INTERESTING IDEA: is to have two channels going in, which are the color of the spot, and
+the liberties of that spot. That's not a bad idea. Especially because liberties are so strictly positive. That's like the perfect use of CNNs and channels. I think I'll experiment with that. Should I do absolute value of eyes? Or should I do liberties times
+color? I think that's a better idea.
+
 
 
