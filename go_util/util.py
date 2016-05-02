@@ -89,7 +89,7 @@ def get_neighbors_on_board(board_matrix, spot_tuple):
   """
   A simple check to get a spot's surrounding peices, if they're on the board.
   """
-  if not move_is_on_board(board_matrix, move_tuple):
+  if not move_is_on_board(board_matrix, spot_tuple):
     print "move passed to spot_is_open is not on board!"
     raise Exception("illegal move passed to spot_is_open")
   x, y = spot_tuple
@@ -101,7 +101,7 @@ def get_neighbors_on_board(board_matrix, spot_tuple):
 def get_neighbors_of_color(board_matrix, spot_tuple, color):
   if color not in (-1,0,1):
     raise Exception("Invalid color passed to get_neighbors_of_color")
-  all_neighbors = get_neighbors_of_color(board_matrix, spot_tuple)
+  all_neighbors = get_neighbors_on_board(board_matrix, spot_tuple)
   neighbors_of_color = [n for n in all_neighbors if spot_is_color(board_matrix, n, color)]
   return neighbors_of_color
   
@@ -181,17 +181,17 @@ def get_group_around_stone(board_matrix, spot_tuple):
 
   return set_of_seen
 
-def confirm_group_is_one_color(board_matrix, group):
-  """
-  This is a sanity check, because I'm doing hard stuff.
-  """
-  if len(group) == 0:
-    return
+# def confirm_group_is_one_color(board_matrix, group):
+#   """
+#   This is a sanity check, because I'm doing hard stuff.
+#   """
+#   if len(group) == 0:
+#     return
   
-  colors = set([ get_value_for_spot(board_matrix, s) for s in group ])
-  if len(colors) != 1:
-    raise Exception("Looks like group is not one color, that means I messed up somewhere.")
-  return
+#   colors = set([ get_value_for_spot(board_matrix, s) for s in group ])
+#   if len(colors) != 1:
+#     raise Exception("Looks like group is not one color, that means I messed up somewhere.")
+#   return
 
 def group_is_one_color(board_matrix, group):
   if len(group) == 0:
@@ -218,7 +218,7 @@ def remove_group_around_stone(board_matrix, spot_tuple):
   Function that removes a group. Should only be called if the group has no liberties.
   """
   group_around_stone = get_group_around_stone(board_matrix, spot_tuple)
-  confirm_group_is_one_color(board_matrix, group_around_stone)
+  # confirm_group_is_one_color(board_matrix, group_around_stone)
   remove_stones_in_group(board_matrix, group_around_stone)
   return
 
@@ -304,15 +304,6 @@ def update_board_from_move(board_matrix, move_tuple, current_player):
     n_o_c = get_neighbors_of_color(new_board, move_tuple, -1*current_player)
 
   return new_board
-  # for n in n_o_c:
-  #   # Confusing, because you might edit one of these spots.
-  #   # Should do a check for whether it is zero still.
-  #   if get_value_for_spot(new_board, n) is 0:
-  #     continue
-
-  #   libs = count_liberties_around_stone(new_board, n)
-  #   if libs is 0:
-  #     remove_group_around_stone(new_board, n)
 
 
 

@@ -81,28 +81,47 @@ def test_spot_is_color():
 
 def test_get_neighbors_on_board():
   assert (set(get_neighbors_on_board(b1_4x4, (0,0))) == set([(0,1),(1,0)]))
-  assert True
+  assert (set(get_neighbors_on_board(b1_4x4, (1,1))) == set([(0,1),(1,0),(1,2),(2,1)]))
+  assert (set(get_neighbors_on_board(b1_4x4, (3,3))) == set([(3,2),(2,3)]))
   print "test_get_neighbors_on_board: success!"
 
 def test_get_neighbors_of_color():
-  assert True
+  assert (set(get_neighbors_of_color(b1_4x4, (0,0), 0)) == set([(0,1),(1,0)]))
+  assert (set(get_neighbors_of_color(b1_4x4, (1,1), 0)) == set([(0,1),(1,0),(1,2),(2,1)]))
+  assert (set(get_neighbors_of_color(b1_4x4, (1,1), 0)) == set([(0,1),(1,0),(1,2),(2,1)]))
+  assert (set(get_neighbors_of_color(b2_4x4, (1,1), 0)) == set([]))
+  assert (set(get_neighbors_of_color(b2_4x4, (1,1), 1)) == set([(0,1),(1,0)]))
+  assert (set(get_neighbors_of_color(b2_4x4, (1,1), -1)) == set([(2,1),(1,2)]))
   print "test_get_neighbors_of_color: success!"
 
-def test_count_liberties():
-  assert True
-  print "test_count_liberties: success!"
+# def test_count_liberties():
+#   assert True
+#   print "test_count_liberties: success!"
 
 def test_count_liberties_around_stone():
-  assert True
+  assert (count_liberties_around_stone(b2_4x4, (1,1)) == 1)
+  assert (count_liberties_around_stone(b2_4x4, (0,1)) == 1)
+  assert (count_liberties_around_stone(b2_4x4, (0,2)) == 6)
+  assert (count_liberties_around_stone(b4_4x4, (1,1)) == 4)
+  assert (count_liberties_around_stone(b4_4x4, (1,2)) == 4)
+  assert (count_liberties_around_stone(b4_4x4, (2,2)) == 4)
+  assert (count_liberties_around_stone(b3_4x4, (3,3)) == 1)
+  assert (count_liberties_around_stone(b5_4x4, (0,0)) == 4)
+  assert (count_liberties_around_stone(b5_4x4, (1,1)) == 0)
   print "test_count_liberties_around_stone: success!"
 
 def test_get_group_around_stone():
-  assert True
+  assert (get_group_around_stone(b3_4x4, (0,0)) == \
+      set([(0,0),(0,1),(0,2),(0,3),(1,3),(2,3),(3,3),(3,2),(3,1),(3,0),(2,0),(1,0)]))
+  assert(get_group_around_stone(b3_4x4, (1,1)) == set([(1,1),(1,2),(2,2)]))
   print "test_get_group_around_stone: success!"
 
-def test_confirm_group_is_one_color():
-  assert True
-  print "test_confirm_group_is_one_color: success!"
+# def test_confirm_group_is_one_color():
+#   confirm_group_is_one_color(b3_4x4, get_group_around_stone(b3_4x4, (0,0)))
+#   confirm_group_is_one_color(b3_4x4, get_group_around_stone(b3_4x4, (1,1)))
+
+#   # assert True
+#   print "test_confirm_group_is_one_color: success!"
 
 def test_remove_stones_in_group():
   assert True
@@ -150,10 +169,10 @@ if __name__ == '__main__':
   test_spot_is_color()
   test_get_neighbors_on_board()
   test_get_neighbors_of_color()
-  test_count_liberties()
+  # test_count_liberties() #Only a helper function. Can test through parent function.
   test_count_liberties_around_stone()
   test_get_group_around_stone()
-  test_confirm_group_is_one_color()
+  # test_confirm_group_is_one_color()
   test_remove_stones_in_group()
   test_remove_group_around_stone()
   test_spot_is_suicide()
