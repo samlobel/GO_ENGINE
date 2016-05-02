@@ -26,6 +26,10 @@ def move_is_on_board(board_matrix, move_tuple):
   """
   A simple check to see if a move is on the board, or out of bounds. Utility function.
   """
+
+  if type(move_tuple) is not tuple:
+    raise Exception("move tuple must be a tuple, in move_is_on_board")
+
   board_shape_x, board_shape_y = board_matrix.shape
   if board_shape_x != board_shape_y:
     raise Exception("Non-square board (or non-numpy board) passed to move_is_on_board")
@@ -70,8 +74,7 @@ def spot_is_open(board_matrix, move_tuple):
     print "move passed to spot_is_open is not on board!"
     raise Exception("illegal move passed to spot_is_open")
 
-  return (get_value_for_spot(board_matrix, move_tuple) is 0)
-  # return (board_matrix[move_tuple[0]][move_tuple[1]] is 0)
+  return (get_value_for_spot(board_matrix, move_tuple) == 0)
 
 
 def spot_is_color(board_matrix, move_tuple, color):
@@ -79,7 +82,7 @@ def spot_is_color(board_matrix, move_tuple, color):
     print "move passed to spot_is_open is not on board!"
     raise Exception("illegal move passed to spot_is_open")
 
-  return (get_value_for_spot(board_matrix, move_tuple) is color)
+  return (get_value_for_spot(board_matrix, move_tuple) == color)
   
 
 def get_neighbors_on_board(board_matrix, spot_tuple):
@@ -112,7 +115,7 @@ def get_neighbors_of_color(board_matrix, spot_tuple, color):
 
 
 
-def count_liberties(board_matrix, set_of_seen, border_set, current_player
+def count_liberties(board_matrix, set_of_seen, border_set, current_player,
         liberties_so_far=0):
   """
   So, if something is in the border set, it's not in the set of seen. It's 
@@ -122,7 +125,7 @@ def count_liberties(board_matrix, set_of_seen, border_set, current_player
     print "current player not -1 or 1."
     raise Exception("bad validation for current_player in count_liberties")
 
-  if len(border_set) is 0:
+  if len(border_set) == 0:
     return liberties_so_far
 
   # border_set = set(border_set) #might be unnecessary, we'll see.
@@ -169,7 +172,7 @@ def get_group_around_stone(board_matrix, spot_tuple):
 
   border_set = set([spot_tuple])
   set_of_seen = set([])
-  while len(border_set) is not 0:
+  while len(border_set) != 0:
     set_of_seen = set_of_seen.union(border_set)
     new_border_set = [get_neighbors_of_color(board_matrix, m_t, group_color) for m_t in border_set]
     new_border_set = set(flatten_list(new_border_set))
@@ -182,20 +185,20 @@ def confirm_group_is_one_color(board_matrix, group):
   """
   This is a sanity check, because I'm doing hard stuff.
   """
-  if len(group) is 0:
+  if len(group) == 0:
     return
   
   colors = set([ get_value_for_spot(board_matrix, s) for s in group ])
-  if len(colors) is not 1:
+  if len(colors) != 1:
     raise Exception("Looks like group is not one color, that means I messed up somewhere.")
   return
 
 def group_is_one_color(board_matrix, group):
-  if len(group) is 0:
+  if len(group) == 0:
     return True
 
   colors = set([ get_value_for_spot(board_matrix, s) for s in group ])
-  if len(colors) is 1:
+  if len(colors) == 1:
     return True
   else:
     return False
@@ -252,7 +255,7 @@ def spot_is_suicide(board_matrix, move_tuple, current_player):
   other_player_neighbors = get_neighbors_of_color(board_copy, -1*current_player)
   other_player_liberties = [count_liberties_around_stone(board_copy, m_t) for m_t in other_player_neighbors]
   for o_p_l in other_player_liberties:
-    if o_p_l is 0:
+    if o_p_l == 0:
       return False
     else:
       continue
@@ -260,7 +263,7 @@ def spot_is_suicide(board_matrix, move_tuple, current_player):
   # At this point, we know it won't remove any neighbors.
   this_spot_liberties = count_liberties_around_stone(board_copy, move_tuple)
 
-  if this_spot_liberties is 0:
+  if this_spot_liberties == 0:
     return True
   else:
     return False
@@ -293,10 +296,10 @@ def update_board_from_move(board_matrix, move_tuple, current_player):
   set_value_for_spot(new_board, move_tuple, current_player)
 
   n_o_c = get_neighbors_of_color(new_board, move_tuple, -1*current_player)
-  while len(n_o_c) is not 0:
+  while len(n_o_c) != 0:
     n = n_o_c[0]
     libs = count_liberties_around_stone(new_board, n)
-    if libs is 0:
+    if libs == 0:
       remove_group_around_stone(new_board, n)
     n_o_c = get_neighbors_of_color(new_board, move_tuple, -1*current_player)
 
@@ -382,7 +385,7 @@ def determine_owner_of_free_space(board_matrix, spot_tuple):
   seen_spots = set([])
   frontier = set([spot_tuple])
 
-  while len(frontier) is not 0:
+  while len(frontier) != 0:
     seen_spots = seen_spots.union(frontier)
     open_frontier = set([])
     for spot in frontier:
@@ -396,17 +399,17 @@ def determine_owner_of_free_space(board_matrix, spot_tuple):
     new_frontier = new_frontier.difference(seen_spots)
     frontier = new_frontier
 
-  if len(border_spots) is 0:
+  if len(border_spots) == 0:
     # That means that there's nothing on the field.
     return 0
 
   color_groups = set([get_value_for_spot(board_matrix, b_s) for b_s in border_spots])
 
-  if len(color_groups) is 0:
+  if len(color_groups) == 0:
     raise Exception("Whaat? No colors in group?")
   elif 0 in color_groups:
     raise Exception("Somehow a blank space ended up in the border")
-  elif len(color_groups) is not 1:
+  elif len(color_groups) != 1:
     # That means it shared a border with both players.
     return 0
   else:
@@ -443,14 +446,13 @@ def determine_owner_of_free_space(board_matrix, spot_tuple):
 
 """
 I guess, it would make sense to have a function that checked the liberties of 
-every taken square, to make sure none of them are zero. Because if they are,
+every taken square, to make sure none of them are zero. Because if they are, 
 then that's sort of an illegal board. I think that this false eye thing is 
-really screwing me up. How to check for it? I guess, the number of liberties
-that something has is the number of spots
+really screwing me up. How to check for it? I guess, the number of liberties 
+that something has is the number of spots 
 So, to score the board, first you have to go through and see all the things that
 have only one eye. No, because as I said before, if you have something like that,
 then the games will continue until they're full up.
-
 """
 
 
@@ -471,7 +473,7 @@ def score_board(current_board):
   for tup in move_tuples_on_board(board_copy):
     if spot_is_open(board_copy, tup):
       owner = determine_owner_of_free_space(board_copy, tup)
-      if owner is 0:
+      if owner == 0:
         continue
       else:
         set_value_for_spot(board_copy, tup, owner)
@@ -482,11 +484,11 @@ def score_board(current_board):
 
   for tup in move_tuples_on_board(board_copy):
     spot_value = get_value_for_spot(board_copy, tup)
-    if spot_value is 0:
+    if spot_value == 0:
       continue
-    elif spot_value is 1:
+    elif spot_value == 1:
       num_pos += 1
-    elif spot_value is -1:
+    elif spot_value == -1:
       num_neg += 1
     else:
       print board_copy
@@ -496,6 +498,17 @@ def score_board(current_board):
     'pos' : num_pos,
     'neg' : num_neg
   }
+
+
+def determine_winner(current_board):
+  scores = score_board(current_board)
+  if scores['pos'] == scores['neg']:
+    return 0
+  elif scores['pos'] > scores['neg']:
+    return 1
+  else:
+    return -1
+
 
 
 
