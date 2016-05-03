@@ -123,12 +123,39 @@ def test_get_group_around_stone():
 #   # assert True
 #   print "test_confirm_group_is_one_color: success!"
 
-def test_remove_stones_in_group():
-  assert True
-  print "test_remove_stones_in_group: success!"
+# def test_remove_stones_in_group():
+#   copy_3 = copy(b3_4x4)
+#   end_goal = np.asarray(
+#     [[ 0, 0, 0, 0],
+#      [ 0,-1,-1, 0],
+#      [ 0, 0,-1, 0],
+#      [ 0, 0, 0, 0]]
+#   )
+#   edited_3 = remove_stones_in_group()
+#   assert True
+#   print "test_remove_stones_in_group: success!"
 
 def test_remove_group_around_stone():
-  assert True
+  copy_3 = copy(b3_4x4)
+  end_goal = np.asarray(
+    [[ 0, 0, 0, 0],
+     [ 0,-1,-1, 0],
+     [ 0, 0,-1, 0],
+     [ 0, 0, 0, 0]]
+  )
+  remove_group_around_stone(copy_3, (0,0))
+  # print copy_3
+  assert boards_are_equal(end_goal, copy_3)
+
+  copy_3 = copy(b3_4x4)
+  end_goal = np.asarray(
+    [[ 1, 1, 1, 1],
+     [ 1, 0, 0, 1],
+     [ 1, 0, 0, 1],
+     [ 1, 1, 1, 1]]
+  )
+  remove_group_around_stone(copy_3, (1,1))
+  assert boards_are_equal(end_goal, copy_3)
   print "test_remove_group_around_stone: success!"
 
 def test_spot_is_suicide():
@@ -148,7 +175,11 @@ def test_move_is_valid():
   print "test_move_is_valid: success!"
 
 def test_output_all_valid_moves():
-  assert True
+  all_valid = set(output_all_valid_moves(copy(b1_4x4), 1, copy(b1_4x4)))
+  all_moves = set(move_tuples_on_board(b1_4x4))
+  assert all_moves == all_valid
+  all_valid = set(output_all_valid_moves(copy(b1_4x4), -1, copy(b1_4x4)))
+  assert all_moves == all_valid
   print "test_output_all_valid_moves: success!"
 
 def test_determine_owner_of_free_space():
@@ -173,7 +204,7 @@ if __name__ == '__main__':
   test_count_liberties_around_stone()
   test_get_group_around_stone()
   # test_confirm_group_is_one_color()
-  test_remove_stones_in_group()
+  # test_remove_stones_in_group()
   test_remove_group_around_stone()
   test_spot_is_suicide()
   test_update_board_from_move()

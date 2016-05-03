@@ -206,7 +206,7 @@ def group_is_one_color(board_matrix, group):
 
 def remove_stones_in_group(board_matrix, group):
   """
-  In place.
+  In place. Helper function.
   """
   for spot in group:
     set_value_for_spot(board_matrix, spot, 0)
