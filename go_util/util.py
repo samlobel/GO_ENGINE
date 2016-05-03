@@ -252,7 +252,7 @@ def spot_is_suicide(board_matrix, move_tuple, current_player):
   board_copy = copy(board_matrix)
   set_value_for_spot(board_copy, move_tuple, current_player)
 
-  other_player_neighbors = get_neighbors_of_color(board_copy, -1*current_player)
+  other_player_neighbors = get_neighbors_of_color(board_copy, move_tuple, -1*current_player)
   other_player_liberties = [count_liberties_around_stone(board_copy, m_t) for m_t in other_player_neighbors]
   for o_p_l in other_player_liberties:
     if o_p_l == 0:
@@ -296,12 +296,20 @@ def update_board_from_move(board_matrix, move_tuple, current_player):
   set_value_for_spot(new_board, move_tuple, current_player)
 
   n_o_c = get_neighbors_of_color(new_board, move_tuple, -1*current_player)
-  while len(n_o_c) != 0:
-    n = n_o_c[0]
+  for n in n_o_c:
+    if not (get_value_for_spot(new_board, n) == -1*current_player):
+      continue
     libs = count_liberties_around_stone(new_board, n)
     if libs == 0:
       remove_group_around_stone(new_board, n)
-    n_o_c = get_neighbors_of_color(new_board, move_tuple, -1*current_player)
+
+  #   if libs == 0:
+  # while len(n_o_c) != 0:
+  #   n = n_o_c[0]
+  #   libs = count_liberties_around_stone(new_board, n)
+  #   if libs == 0:
+  #     remove_group_around_stone(new_board, n)
+  #   n_o_c = get_neighbors_of_color(new_board, move_tuple, -1*current_player)
 
   return new_board
 
@@ -420,17 +428,6 @@ def determine_owner_of_free_space(board_matrix, spot_tuple):
 
 
 
-
-
-
-
-
-
-
-
-
-
-  pass
 
 
 

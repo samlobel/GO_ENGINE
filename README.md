@@ -67,4 +67,7 @@ the liberties of that spot. That's not a bad idea. Especially because liberties 
 color? I think that's a better idea.
 
 
+WHERE I LEFT OFF:
+LOOKS LIKE THINGS ARE GOING WELL, EXCEPT THAT THE INFINITE LOOP CONDITION IS NOT BEING CAUGHT QUITE PERFECTLY. IM SURE I CAN FIGURE OUT WHY LATER.
+
 
