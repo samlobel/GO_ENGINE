@@ -20,6 +20,8 @@ def unflatten_list(l, desired_shape):
   return np.asarray(l).reshape(desired_shape)
 
 
+
+
 def boards_are_equal(b1, b2):
   return np.array_equal(b1,b2)
 

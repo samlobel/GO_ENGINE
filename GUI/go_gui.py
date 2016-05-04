@@ -71,8 +71,14 @@ class Board:
     self.canvas.pack()
 
 
-    self.bottomframe = Frame(self.root)
-    self.bottomframe.pack(side='bottom')
+    self.lowestTwo = Frame(self.root)
+
+
+    b_2 = Button(master = self.lowestTwo, text="Pass Move", command=self.pass_move)
+    b_2.pack(side='right')
+
+    self.bottomframe = Frame(self.lowestTwo)
+    self.bottomframe.pack(side='top')
 
 
     self.error_text = StringVar()
@@ -88,7 +94,12 @@ class Board:
 
 
 
-    self.lowestframe = Frame(self.root)
+
+
+
+
+
+    self.lowestframe = Frame(self.lowestTwo)
     self.lowestframe.pack(side='bottom')
 
     self.black_score = StringVar()
@@ -105,6 +116,11 @@ class Board:
     self.white_score_label.pack(side='right')
     l_bl_sc = Label(master=self.lowestframe, text="White Score: ")
     l_bl_sc.pack(side='right')
+
+
+    
+
+    self.lowestTwo.pack(side='bottom', fill=X)
 
 
 
@@ -140,6 +156,10 @@ class Board:
     self.disabled = False
 
     self.reset()
+
+  def pass_move(self):
+    self.clicked_at_location(None)
+    return
 
 
 
