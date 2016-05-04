@@ -71,3 +71,17 @@ WHERE I LEFT OFF:
 LOOKS LIKE THINGS ARE GOING WELL, EXCEPT THAT THE INFINITE LOOP CONDITION IS NOT BEING CAUGHT QUITE PERFECTLY. IM SURE I CAN FIGURE OUT WHY LATER.
 
 
+I should make my program adhere to the GTP (Go Text Protocol).
+http://cgos.boardspace.net/
+
+Therre may be some stuff about black wanting to maximize value and white wanting to minimize it.
+
+
+Looks like I use tail recursion way too much, and its breaking my program. That stinks.
+I should also try and find ways to make this faster, its slow as fuck.
+
+
+I'm scared I have a bug. It's learning, but it's not really getting any better, and that's not good. It seems like I could have really easily messed up in my thought process for the flipping the board, but I don't see exactly how. Maybe I should do the board-flip before the apply_move thing.
+
+
+

@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 from copy import deepcopy as copy
+import random
 
 
 # def get_board_shape(board_matrix):
@@ -125,30 +126,53 @@ def count_liberties(board_matrix, set_of_seen, border_set, current_player,
     print "current player not -1 or 1."
     raise Exception("bad validation for current_player in count_liberties")
 
-  if len(border_set) == 0:
-    return liberties_so_far
+  set_of_seen = set([])
+  while len(border_set) != 0:
+    set_of_seen = set_of_seen.union(border_set)
+    new_border_set = set([])
+    for move_tuple in border_set:
+      if spot_is_open(board_matrix, move_tuple):
+        liberties_so_far += 1
+        continue
+      elif spot_is_color(board_matrix, move_tuple, current_player):
+        neighbors_on_board = set(get_neighbors_on_board(board_matrix, move_tuple))
+        new_neighbors_on_board = neighbors_on_board.difference(set_of_seen)
+        new_border_set = new_border_set.union(new_neighbors_on_board)
+        continue
+      else:
+        continue
+    border_set = new_border_set
 
-  # border_set = set(border_set) #might be unnecessary, we'll see.
-  # set_of_seen = set(set_of_seen)
-  new_set_of_seen = set_of_seen.union(border_set)
-  new_border_set = set([])
+  return liberties_so_far
+
+    
+
+  # return liberties_so_far
+
+  # if len(border_set) == 0:
+  #   return liberties_so_far
+
+  # # border_set = set(border_set) #might be unnecessary, we'll see.
+  # # set_of_seen = set(set_of_seen)
+  # new_set_of_seen = set_of_seen.union(border_set)
+  # new_border_set = set([])
 
 
 
-  for move_tuple in border_set:
-    if spot_is_open(board_matrix, move_tuple):
-      liberties_so_far += 1
-      continue
-    elif spot_is_color(board_matrix, move_tuple, current_player):
-      neighbors_on_board = set(get_neighbors_on_board(board_matrix, move_tuple))
-      neighbors_on_board = neighbors_on_board.difference(new_set_of_seen)
-      new_border_set = new_border_set.union(neighbors_on_board)
-    else:
-      # This is one of the other color. you just stop.
-      continue
+  # for move_tuple in border_set:
+  #   if spot_is_open(board_matrix, move_tuple):
+  #     liberties_so_far += 1
+  #     continue
+  #   elif spot_is_color(board_matrix, move_tuple, current_player):
+  #     neighbors_on_board = set(get_neighbors_on_board(board_matrix, move_tuple))
+  #     neighbors_on_board = neighbors_on_board.difference(new_set_of_seen)
+  #     new_border_set = new_border_set.union(neighbors_on_board)
+  #   else:
+  #     # This is one of the other color. you just stop.
+  #     continue
 
-  return count_liberties(board_matrix, new_set_of_seen,
-         new_border_set, current_player, liberties_so_far)
+  # return count_liberties(board_matrix, new_set_of_seen,
+  #        new_border_set, current_player, liberties_so_far)
 
 
 def count_liberties_around_stone(board_matrix, spot_in_group):
@@ -285,6 +309,9 @@ def update_board_from_move(board_matrix, move_tuple, current_player):
 
   """
 
+  if move_tuple is None:
+    return copy(board_matrix)
+
   if not spot_is_open(board_matrix, move_tuple):
     raise Exception("Invalid move, cannot place stone on taken square")
 
@@ -319,9 +346,13 @@ def move_makes_duplicate(board_matrix, move_tuple, current_player, previous_boar
   """
   this should happen after suicide. I won't call suicide in it though because they
   should always be called in tandem.
+  BUT, it also happens if someone passes, which would preclude double-passing to end.
   """
+  if boards_are_equal(board_matrix, previous_board):
+    # This means that someone passed, who cares about duplicates then.
+    return False
   updated_board = update_board_from_move(board_matrix, move_tuple, current_player)
-  return boards_are_equal(board_matrix, updated_board)
+  return boards_are_equal(updated_board, previous_board)
 
 
 def move_is_valid(board_matrix, move_tuple, current_player, previous_board):
@@ -331,13 +362,16 @@ def move_is_valid(board_matrix, move_tuple, current_player, previous_board):
   b) it's a suicide move.
   c) there's already something there.
   """
+  if move_tuple is None:
+    return True
+
   if not spot_is_open(board_matrix, move_tuple):
     return False
 
   if spot_is_suicide(board_matrix, move_tuple, current_player):
     return False
 
-  if move_makes_duplicate(board_matrix, move_tuple, current_player, previous_board):
+  if (previous_board is not None) and move_makes_duplicate(board_matrix, move_tuple, current_player, previous_board):
     return False
 
   # I think that's it.
@@ -360,7 +394,7 @@ def output_all_valid_moves(board_matrix, previous_board, current_player):
   valid_moves = set([])
   length, width = board_matrix.shape
   for m_t in move_tuples_on_board(board_matrix):
-    if (board_matrix, m_t, current_player, previous_board):
+    if move_is_valid(board_matrix, m_t, current_player, previous_board):
       valid_moves.add(m_t)
   return valid_moves
 
@@ -375,6 +409,10 @@ def determine_owner_of_free_space(board_matrix, spot_tuple):
   part.
 
   Invariant: frontier is not part of border or seen.
+
+  COULD BE VERY MUCH OPTIMIZED. It checks each individually, but it really just
+  needs to do groupings, which would speed it up by like 360 times. Probably
+  worth fixing.
 
   NOT DONE!
   """
@@ -496,6 +534,42 @@ def determine_winner(current_board):
     return 1
   else:
     return -1
+
+
+
+def generate_random_board(board_shape, total_moves):
+  """
+  Generates random board, starting with black's move.
+  Returns the generated board, plus the person who gets to move next.
+  """
+  last_board = np.zeros(board_shape)
+  current_board = np.zeros(board_shape)
+  next_turn = 1
+  for i in xrange(total_moves):
+    valid_moves = output_all_valid_moves(current_board, last_board, next_turn)
+    if len(valid_moves) == 0:
+      print "Looks like we got stuck at some point, try simulating less far."
+      return None, None
+    valid_move = random.choice(list(valid_moves))
+    new_board = update_board_from_move(current_board, valid_move, next_turn)
+    last_board = current_board
+    current_board = new_board
+    next_turn = next_turn * -1
+  return current_board, next_turn
+
+
+if __name__ == '__main__':
+  print generate_random_board((9,9), 0)
+#   b2 = generate_random_board((9,9), 25)
+#   b3 = generate_random_board((9,9), 25)
+#   print b1
+#   print b2
+#   print b3
+
+
+
+
+
 
 
 

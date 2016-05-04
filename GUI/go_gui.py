@@ -9,12 +9,24 @@ from copy import deepcopy as copy
 import sys
 import os
 
-sys.path.append(os.path.abspath('../.'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../.'))
+
+# sys.path.append(os.path.abspath('../.'))
 
 from go_util import util
 
+from NNET.NINE.more_basic_convnet import Very_Basic_ConvBot
+# from NNET.NINE.basic_convnet import Basic_ConvBot as Convbot
+
+from NNET.NINE.random_mover import Random_Mover
+
+import time
+
 # print util.flatten_list([[1,2,3],[4,5,6],[7,8,9]])
 
+
+# AI_1 = Convbot()
+# AI_2 = Random_Mover()
 
 
 class Board:
@@ -29,7 +41,7 @@ class Board:
     self.frame = Frame(self.root)
     self.frame.pack()
 
-    l1 = Label(self.frame, text="Black is:")    
+    l1 = Label(self.frame, text="Black is:")
     l1.pack(side='left')
     self.black_player = StringVar(self.root)
     self.black_player.set("HUMAN")
@@ -46,7 +58,7 @@ class Board:
     l3 = Label(self.frame, text="Board dims:")
     l3.pack(side='left')
     self.columns = IntVar(self.root)
-    self.columns.set(13)
+    self.columns.set(9)
     self.column_dropdown = OptionMenu(self.frame, self.columns, 5, 9, 11, 13, 19)
     self.column_dropdown.pack(side='left')
 
@@ -63,16 +75,39 @@ class Board:
     self.bottomframe.pack(side='bottom')
 
 
-    self.error_label_text = StringVar()
-    self.error_label_text.set("beginning")
+    self.error_text = StringVar()
+    self.error_text.set("")
 
-    self.error_label_text = Label(master=self.bottomframe, textvariable=self.error_label_text, fg="red", font=("Helvetica", 24))
+    self.error_label_text = Label(master=self.bottomframe, textvariable=self.error_text, fg="red", font=("Helvetica", 24))
     self.error_label_text.pack(side='left')
 
     self.turn_symbol = Label(master=self.bottomframe, text="")
     self.turn_symbol.pack(side='right')
     self.turn_label = Label(master=self.bottomframe, text="TURN: ")
     self.turn_label.pack(side='right')
+
+
+
+    self.lowestframe = Frame(self.root)
+    self.lowestframe.pack(side='bottom')
+
+    self.black_score = StringVar()
+    self.black_score.set(str(0))
+    self.black_score_label = Label(master=self.lowestframe, textvariable=self.black_score)
+    self.black_score_label.pack(side='right')
+    l_bl_sc = Label(master=self.lowestframe, text="Black Score: ")
+    l_bl_sc.pack(side='right')
+
+
+    self.white_score = StringVar()
+    self.white_score.set(str(0))
+    self.white_score_label = Label(master=self.lowestframe, textvariable=self.white_score)
+    self.white_score_label.pack(side='right')
+    l_bl_sc = Label(master=self.lowestframe, text="White Score: ")
+    l_bl_sc.pack(side='right')
+
+
+
 
 
 
@@ -92,10 +127,17 @@ class Board:
       -1 : 'white'
     }
 
+    self.inverse_color_map = {
+      'black' : 1,
+      'white': -1
+    }
+
     def handler(event, self=self):
       return self.intercept_board_click(event)
 
     self.canvas.bind('<Button-1>', handler)
+
+    self.disabled = False
 
     self.reset()
 
@@ -104,7 +146,11 @@ class Board:
 
 
   def set_error_label(self, text):
-    self.error_label_text.set(text)
+    self.error_text.set(text)
+
+  def set_scores(self, white, black):
+    self.black_score.set(str(black))
+    self.white_score.set(str(white))
 
   def set_label_for_turn(self):
     if self.turn == 1:
@@ -124,8 +170,25 @@ class Board:
     self.board_metadata = {
       'shape' : (self.columns.get(), self.columns.get()),
       'white_player' : self.white_player.get(),
-      'black_player' : self.black_player.get()
+      'black_player' : self.black_player.get(),
+      'white_AI' : None,
+      'black_AI' : None
     }
+
+    if self.board_metadata['black_player'] == 'AI':
+      # self.board_metadata['black_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_1_batch.ckpt")
+      # self.board_metadata['black_AI'] = Random_Mover()
+      self.board_metadata['black_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_20_batch.ckpt')
+      
+    if self.board_metadata['white_player'] == 'AI':
+      self.board_metadata['white_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_1_batch.ckpt')
+      # self.board_metadata['white_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_7_batch.ckpt")
+      # self.board_metadata['white_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_5_batch.ckpt")
+      # self.board_metadata['white_AI'] = Very_Basic_ConvBot(load_path="../NNET/NINE/saved_models/more_basic_convnet/trained_on_10_batch.ckpt")
+      # self.board_metadata['white_AI'] = Very_Basic_ConvBot()
+      # self.board_metadata['white_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_1_batch.ckpt')
+      
+
 
     self.previous_board = np.zeros((self.columns.get(), self.columns.get()), dtype=np.int)
     self.board_data = np.zeros((self.columns.get(), self.columns.get()), dtype=np.int)
@@ -133,6 +196,8 @@ class Board:
 
     self.draw_background()
     self.set_label_for_turn()
+    self.disabled = False
+    self.move_with_ai_if_applicable()
 
 
   def draw_circle_at_location(self, c, r, color):
@@ -149,20 +214,56 @@ class Board:
         self.draw_circle_at_location(tup[0],tup[1], 1)
       else:
         continue
+    scores = util.score_board(self.board_data)
+    self.set_scores(scores['neg'], scores['pos'])
     print "board drawn."
+    self.root.update()
 
+
+  def move_with_ai_if_applicable(self):
+    turn = self.turn
+    the_ai = None
+    if turn == 1:
+      the_ai = self.board_metadata['black_AI']
+    elif turn == -1:
+      the_ai = self.board_metadata['white_AI']
+    else:
+      raise Exception("Turn is not 1 or -1")
+
+    if the_ai is None:
+      print "no AI for player " + str(turn)
+      return
+
+    # time.sleep(0.1)
+    best_move = the_ai.get_best_move(self.board_data, self.previous_board, self.turn)
+    print best_move
+    self.clicked_at_location(best_move)
 
     
+
+
+  def disable_if_done(self):
+    if (len(self.moves) >= 2) and (self.moves[-1] is None) and (self.moves[-2] is None):
+      self.disabled = True
 
   def switch_turn(self):
     self.turn = -1*self.turn
     self.set_label_for_turn()
+    self.disable_if_done()
+    self.move_with_ai_if_applicable()
 
-  def clicked_at_location(self, c, r):
-    if util.move_is_valid(self.board_data, (c,r), self.turn, self.previous_board):
-      new_board = util.update_board_from_move(self.board_data, (c,r), self.turn)
+  def clicked_at_location(self, click_location):
+    if self.disabled:
+      print "disabled, cannot click"
+      return
+    if util.move_is_valid(self.board_data, click_location, self.turn, self.previous_board):
+      print "clicking for turn: " + str(self.color_map[self.turn]) + "\n\n\n"
+      new_board = util.update_board_from_move(self.board_data, click_location, self.turn)
       self.previous_board = self.board_data
       self.board_data = new_board
+      self.moves.append(click_location)
+      print self.board_data
+      
       self.draw_board_data()
       self.switch_turn()
 
@@ -198,7 +299,7 @@ class Board:
           print "hit intersection " + str(inter_x) + ", " + str(inter_y)
           # self.draw_circle_at_location(c,r)
           # self.turn = -1*self.turn
-          self.clicked_at_location(c, r)
+          self.clicked_at_location((c, r))
           return
     print "not intercepted"
 

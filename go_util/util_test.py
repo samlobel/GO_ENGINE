@@ -175,10 +175,10 @@ def test_move_is_valid():
   print "test_move_is_valid: success!"
 
 def test_output_all_valid_moves():
-  all_valid = set(output_all_valid_moves(copy(b1_4x4), 1, copy(b1_4x4)))
+  all_valid = set(output_all_valid_moves(copy(b1_4x4), copy(b1_4x4), 1))
   all_moves = set(move_tuples_on_board(b1_4x4))
   assert all_moves == all_valid
-  all_valid = set(output_all_valid_moves(copy(b1_4x4), -1, copy(b1_4x4)))
+  all_valid = set(output_all_valid_moves(copy(b1_4x4), copy(b1_4x4), -1))
   assert all_moves == all_valid
   print "test_output_all_valid_moves: success!"
 
@@ -189,6 +189,9 @@ def test_determine_owner_of_free_space():
 def test_def_score_board():
   assert True
   print "test_def_score_board: success!"
+
+def test_generate_random_board():
+  pass
 
 
 if __name__ == '__main__':
