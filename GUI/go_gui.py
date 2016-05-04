@@ -177,11 +177,15 @@ class Board:
 
     if self.board_metadata['black_player'] == 'AI':
       # self.board_metadata['black_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_1_batch.ckpt")
-      # self.board_metadata['black_AI'] = Random_Mover()
-      self.board_metadata['black_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_20_batch.ckpt')
+      self.board_metadata['black_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
+      # Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_1_batch.ckpt')
+      
+      # self.board_metadata['black_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_1_batch.ckpt')
       
     if self.board_metadata['white_player'] == 'AI':
-      self.board_metadata['white_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_1_batch.ckpt')
+      self.board_metadata['white_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_168_batch.ckpt')
+      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
+      # Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_39_batch.ckpt')
       # self.board_metadata['white_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_7_batch.ckpt")
       # self.board_metadata['white_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_5_batch.ckpt")
       # self.board_metadata['white_AI'] = Very_Basic_ConvBot(load_path="../NNET/NINE/saved_models/more_basic_convnet/trained_on_10_batch.ckpt")

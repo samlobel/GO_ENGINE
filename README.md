@@ -84,4 +84,24 @@ I should also try and find ways to make this faster, its slow as fuck.
 I'm scared I have a bug. It's learning, but it's not really getting any better, and that's not good. It seems like I could have really easily messed up in my thought process for the flipping the board, but I don't see exactly how. Maybe I should do the board-flip before the apply_move thing.
 
 
+I think maybe I've been doing this all wrong. Maybe what I need to do is
+temporal back-up, I could be doubling down on a bad policy. But, I do think that what I'm doing should converge.
 
+What I'm doing:
+I see a board, and I play it to its end. I also get the board's 'value'. If the
+play-to-end wins, then I increase this board's 'value', saying "I want to be in states like this one." If the play-to-end loses, then I decrease the value, saying "I don't want to be in states like this, because my policy loses at them."
+
+I want to see my classification accuracy. Maybe the problem is that
+my thing has converged.
+
+
+
+I need to simulate a board, then try EVERY possibility from there, and then update the value functions for each of the possibilities. That way, if there's a better choice somewhere than I thought, the algorithm figures that out and will be more likely to pick it next time.
+
+
+I could use the value function to update every single spot it sees, that would
+be a huge speedup.
+
+
+Instead of random games, and then on-policy, I should go on-policy for n steps,
+and then simulate every move, and continue those from there on-policy. Then update the value for every state that follows the one you broke policy on.

@@ -17,9 +17,9 @@ from copy import deepcopy as copy
 
 
 class Random_Mover(GoBot):
-  def __init__(self):
+  def __init__(self, shape=(9,9)):
     GoBot.__init__(self)
-    self.board_shape = (9,9)
+    self.board_shape = shape
 
   def get_best_move(self, board_matrix, previous_board, current_turn):
     valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, current_turn))

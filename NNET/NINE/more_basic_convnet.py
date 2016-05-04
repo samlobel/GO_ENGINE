@@ -384,7 +384,7 @@ def train_convbot_on_randoms(batch_num=0):
   #   for num_moves in xrange(50, 75):
   #     b_c.train_on_random_board(num_moves)
   #   b_c.save_to_path(save_path="./saved_models/trained_on_" + str(i+1) + "_epochs.ckpt")
-  num_array = range(15,30)
+  num_array = range(0,75)
   b_c.train_from_num_moves_array(num_array)
   b_c.save_to_path(save_path)
 
@@ -399,7 +399,7 @@ if __name__ == '__main__':
   # b_c = Basic_ConvBot()
   print("training!")
   # train_convbot_on_randoms(load_path='./saved_models/more_basic_convnet/trained_on_2_batch.ckpt')
-  for i in range(20, 22):
+  for i in range(39, 250):
     train_convbot_on_randoms(batch_num=i)
 
   # train_convbot_on_randoms()
