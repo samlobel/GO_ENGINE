@@ -6,6 +6,16 @@ This is going to be a really, really involved project.
 
 There's many things I need to do.
 
+## TO INSTALL:
+You need to make a virtualenv. If you have virtualenv installed, you can
+make one with the command `virtualenv venv`, then activate it with `source venv/bin/activate`, and then install the requirements with `pip install -r frozen.txt`. Then, run the GUI by going to the GUI folder and running `python go_gui.py`.
+
+There are some other things that won't work right now, because my TENSORFLOW model-values aren't on github (too big). 
+
+
+
+
+
 ### SEPARATE TASKS
 #### TASK ONE
 I need to make a GUI that you can play against, so you can see what's going on. That's going to be a process in itself.
@@ -105,3 +115,15 @@ be a huge speedup.
 
 Instead of random games, and then on-policy, I should go on-policy for n steps,
 and then simulate every move, and continue those from there on-policy. Then update the value for every state that follows the one you broke policy on.
+
+
+In determine winner, have handicap option.
+
+To determine score, I don't just need to count the ones surrounded by only white, it should be the ones surrounded by a SINGLE group.
+
+
+http://www.cosumi.net/en/   is a great resource.
+
+By the way, I really should make the network deeper, as well as pass in the total liberties per group as an input. It's a great idea.
+
+

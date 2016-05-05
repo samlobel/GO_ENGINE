@@ -15,8 +15,10 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../.')
 
 from go_util import util
 
-from NNET.NINE.more_basic_convnet import Very_Basic_ConvBot
+# from NNET.NINE.more_basic_convnet import Very_Basic_ConvBot
 # from NNET.NINE.basic_convnet import Basic_ConvBot as Convbot
+# from NNET.NINE.better_learning_convnet import Better_Learner_ConvBot
+from NNET.FIVE.basic_convnet import Convbot_FIVE
 
 from NNET.NINE.random_mover import Random_Mover
 
@@ -102,6 +104,17 @@ class Board:
     self.lowestframe = Frame(self.lowestTwo)
     self.lowestframe.pack(side='bottom')
 
+
+    self.move_count = StringVar()
+    self.move_count.set(str(0))
+    self.move_count_label = Label(master=self.lowestframe, textvariable=self.move_count)
+    self.move_count_label.pack(side='right')
+    l_bl_sc = Label(master=self.lowestframe, text="Move Count: ")
+    l_bl_sc.pack(side='right')
+
+
+
+
     self.black_score = StringVar()
     self.black_score.set(str(0))
     self.black_score_label = Label(master=self.lowestframe, textvariable=self.black_score)
@@ -171,6 +184,7 @@ class Board:
   def set_scores(self, white, black):
     self.black_score.set(str(black))
     self.white_score.set(str(white))
+    self.move_count.set(str(len(self.moves)))
 
   def set_label_for_turn(self):
     if self.turn == 1:
@@ -194,16 +208,30 @@ class Board:
       'white_AI' : None,
       'black_AI' : None
     }
+    self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
       # self.board_metadata['black_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_1_batch.ckpt")
+      # self.board_metadata['black_AI'] = Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_91_batch.ckpt")
       self.board_metadata['black_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
+      # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_91_batch.ckpt")
+      # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_91_batch.ckpt")
+      # Better_Learner_ConvBot('../NNET/NINE/saved_models/better_learning_convnet/trained_on_4_batch.ckpt')
+      # Better_Learner_ConvBot()
+          
+
       # Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_1_batch.ckpt')
       
       # self.board_metadata['black_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_1_batch.ckpt')
       
     if self.board_metadata['white_player'] == 'AI':
-      self.board_metadata['white_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_168_batch.ckpt')
+      # self.board_metadata['white_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
+      self.board_metadata['white_AI'] = Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_91_batch.ckpt")
+      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
+      # Better_Learner_ConvBot('../NNET/NINE/saved_models/better_learning_convnet/trained_on_1_batch.ckpt')
+      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
+      # self.board_metadata['white_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_168_batch.ckpt')
+
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_39_batch.ckpt')
       # self.board_metadata['white_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_7_batch.ckpt")
@@ -258,7 +286,7 @@ class Board:
       print "no AI for player " + str(turn)
       return
 
-    # time.sleep(0.1)
+    time.sleep(0.1)
     best_move = the_ai.get_best_move(self.board_data, self.previous_board, self.turn)
     print best_move
     self.clicked_at_location(best_move)

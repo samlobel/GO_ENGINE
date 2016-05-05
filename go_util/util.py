@@ -350,6 +350,9 @@ def move_makes_duplicate(board_matrix, move_tuple, current_player, previous_boar
   should always be called in tandem.
   BUT, it also happens if someone passes, which would preclude double-passing to end.
   """
+  if previous_board is None:
+    return False
+
   if boards_are_equal(board_matrix, previous_board):
     # This means that someone passed, who cares about duplicates then.
     return False
@@ -386,6 +389,37 @@ def move_tuples_on_board(board_matrix):
     for w in xrange(width):
       move_tuple = (l,w)
       yield move_tuple
+
+
+def output_one_valid_move(board_matrix, previous_board, current_player):
+  free_spaces = 0
+  shape = board_matrix.shape
+  # print shape
+  l1 = range(shape[0])
+  l2 = range(shape[1])
+  random.shuffle(l1)
+  random.shuffle(l2)
+
+  for i in range(shape[0]):
+    for j in range(shape[1]):
+      if spot_is_open(board_matrix, (i,j)):
+        free_spaces += 1
+  if random.random() < (1.0/(free_spaces+1)):
+    return None
+
+  for i in l1:
+    for j in l2:
+      if move_is_valid(board_matrix, (i,j), current_player, previous_board):
+        return (i,j)
+  # print "No Valid Moves. Huh."
+  return None
+
+
+
+  """
+  First, with probability 1/free_spaces, output None.
+  """
+
 
 
 def output_all_valid_moves(board_matrix, previous_board, current_player):
@@ -528,8 +562,18 @@ def score_board(current_board):
   }
 
 
-def determine_winner(current_board):
+def determine_winner(current_board, handicap=0.5):
+
   scores = score_board(current_board)
+  score_difference = scores['pos'] - scores['neg'] - handicap
+  if score_difference > 0:
+    return 1
+  elif score_difference < 0:
+    return -1
+  else:
+    print "Warning a board should never tie."
+    return 0
+
   if scores['pos'] == scores['neg']:
     return 0
   elif scores['pos'] > scores['neg']:
@@ -561,7 +605,23 @@ def generate_random_board(board_shape, total_moves):
 
 
 if __name__ == '__main__':
-  print generate_random_board((9,9), 0)
+
+  random_board, start = generate_random_board((5,5),10)
+  print random_board
+  for i in range(10):
+    print output_one_valid_move(random_board, random_board, start)
+  # print output_one_valid_move(random_board, random_board, start)
+  # print output_one_valid_move(random_board, random_board, start)
+  # print output_one_valid_move(random_board, random_board, start)
+  # print output_one_valid_move(random_board, random_board, start)
+
+  # print output_one_valid_move(generate_random_board((5,5), None, 10))
+  # print output_one_valid_move(np.zeros((2,2)), np.zeros((2,2)), 1)
+  # print output_one_valid_move(np.zeros((2,2)), np.zeros((2,2)), 1)
+  # print output_one_valid_move(np.zeros((2,2)), np.zeros((2,2)), 1)
+  # print output_one_valid_move(np.zeros((2,2)), np.zeros((2,2)), 1)
+  # print output_one_valid_move(np.zeros((2,2)), np.zeros((2,2)), 1)
+  # print generate_random_board((9,9), 0)
 #   b2 = generate_random_board((9,9), 25)
 #   b3 = generate_random_board((9,9), 25)
 #   print b1
