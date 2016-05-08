@@ -25,6 +25,15 @@ def unflatten_list(l, desired_shape):
 def boards_are_equal(b1, b2):
   return np.array_equal(b1,b2)
 
+
+def move_tuples_on_board(board_matrix):
+  length, width = board_matrix.shape
+  for l in xrange(length):
+    for w in xrange(width):
+      move_tuple = (l,w)
+      yield move_tuple
+
+
 def move_is_on_board(board_matrix, move_tuple):
   """
   A simple check to see if a move is on the board, or out of bounds. Utility function.
@@ -177,6 +186,8 @@ def count_liberties(board_matrix, set_of_seen, border_set, current_player,
   #        new_border_set, current_player, liberties_so_far)
 
 
+
+
 def count_liberties_around_stone(board_matrix, spot_in_group):
   if spot_is_open(board_matrix, spot_in_group):
     raise Exception("Counting liberties of empty spot")
@@ -206,6 +217,45 @@ def get_group_around_stone(board_matrix, spot_tuple):
     border_set = new_border_set
 
   return set_of_seen
+
+def count_liberties_around_group(board_matrix, group_set):
+  all_neighbors = set([])
+  for spot in group_set:
+    spot_neighbors = get_neighbors_of_color(board_matrix, spot, 0)
+    for spn in spot_neighbors:
+      all_neighbors.add(spn)
+  return len(all_neighbors)
+
+def output_liberty_map(board_matrix):
+  """
+  Checks each location. If empty, output zero.
+  If not, get total liberties surrounding group. Set value in
+  liberty map to this total. Then, set this same value for all
+  of the other group members, so that you can save on computation.
+
+  NOTE: For white, it should output negative liberties.
+
+  """
+  liberty_map = np.zeros(board_matrix.shape)
+  for mt in move_tuples_on_board(board_matrix):
+    spot_value = get_value_for_spot(board_matrix, mt)
+    if spot_value == 0:
+      continue
+    elif not spot_is_open(liberty_map, mt):
+      # That's if you've already set it.
+      continue
+    else:
+      surrounding_group = get_group_around_stone(board_matrix, mt)
+      liberties_surrounding_group = count_liberties_around_group(board_matrix, surrounding_group)
+      output_value = spot_value * liberties_surrounding_group
+      for spot in surrounding_group:
+        set_value_for_spot(liberty_map, spot, output_value)
+
+  return liberty_map
+
+
+
+
 
 # def confirm_group_is_one_color(board_matrix, group):
 #   """
@@ -382,13 +432,6 @@ def move_is_valid(board_matrix, move_tuple, current_player, previous_board):
   # I think that's it.
   return True
 
-
-def move_tuples_on_board(board_matrix):
-  length, width = board_matrix.shape
-  for l in xrange(length):
-    for w in xrange(width):
-      move_tuple = (l,w)
-      yield move_tuple
 
 
 def output_one_valid_move(board_matrix, previous_board, current_player):

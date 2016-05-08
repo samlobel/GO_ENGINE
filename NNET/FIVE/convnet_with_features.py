@@ -48,29 +48,29 @@ def conv2d(x,W):
 
 
 
-x = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE])
+x = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, 2])
 y_ = tf.placeholder(tf.float32, [None,1])
 
 
-W_conv1 = weight_variable([3,3,1,10])
-b_conv1 = bias_variable([10])
+W_conv1 = weight_variable([3,3,2,20])
+b_conv1 = bias_variable([20])
 
-x_image = tf.reshape(x,[-1,BOARD_SIZE,BOARD_SIZE,1])
+x_image = tf.reshape(x,[-1,BOARD_SIZE,BOARD_SIZE,2])
 
 h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
 
 
-# W_conv2 = weight_variable([2,2,5,10])
-# b_conv2 = bias_variable([10])
+W_conv2 = weight_variable([2,2,20,20])
+b_conv2 = bias_variable([20])
 
-# h_conv2 = tf.nn.relu(conv2d(h_conv1, W_conv2) + b_conv2)
+h_conv2 = tf.nn.relu(conv2d(h_conv1, W_conv2) + b_conv2)
 
 
-W_fc1 = tf.Variable(tf.random_uniform([3*3*10,1],-0.1,0.1))
+W_fc1 = tf.Variable(tf.random_uniform([2*2*20,1],-0.1,0.1))
 b_fc1 = last_row_bias([1])
 
-h_conv1_flat = tf.reshape(h_conv1, [-1, 3*3*10])
-y_conv = tf.nn.tanh(tf.matmul(h_conv1_flat, W_fc1) + b_fc1)
+h_conv2_flat = tf.reshape(h_conv2, [-1, 2*2*20])
+y_conv = tf.nn.tanh(tf.matmul(h_conv2_flat, W_fc1) + b_fc1)
 
 # W_fc3 = weight_variable([128, 1])
 # b_fc3 = bias_variable([1])
@@ -104,7 +104,7 @@ you would want to go. I think that's a much better idea.
 """
 
 
-class Convbot_FIVE(GoBot):
+class Convbot_FIVE_FEATURES(GoBot):
 
   def __init__(self, load_path=None):
     GoBot.__init__(self)
@@ -137,9 +137,26 @@ class Convbot_FIVE(GoBot):
     # want to run it assuming white just went.
     # That makes it a little bit confusing, but it also is the only way that
     # makes sense. Plus, as long as I'm consistent, I think I'm fine.
-    flattened = board_matrix.reshape((1,BOARD_SIZE*BOARD_SIZE))
+    """
+    I changed this pretty drastically, with the board size shape changing and everythign.
+    """
+    # liberty_map = util.output_liberty_map(board_matrix)
+
+    # flattened = board_matrix.reshape((BOARD_SIZE*BOARD_SIZE,))
+    # flattened_map = liberty_map.reshape((BOARD_SIZE*BOARD_SIZE,))
+    # inp = np.asarray([flattened, flattened_map])
+
+    # flattened_liberty_map = \
+    #   util.output_liberty_map(board_matrix).reshape((BOARD_SIZE*BOARD_SIZE))
+
+
+    inp = self.from_board_to_input(board_matrix)
+    inp = np.asarray([inp])
+
+     
+
     results = sess.run(y_conv, feed_dict={
-        x : flattened
+        x : inp
     })
     return results[0]
 
@@ -304,8 +321,17 @@ class Convbot_FIVE(GoBot):
 
 
   def evaluate_boards(self, board_matrices):
+    """
+    The convnet should reshape, so it shouldn't be 
+    a problem how I'm inputting it.
+    """
+
+    liberty_maps = map(util.output_liberty_map, board_matrices)
+    zipped_maps = np.asarray(zip(board_matrices, liberty_maps))
+    reshaped_zipped = zipped_maps.reshape(-1, BOARD_SIZE*BOARD_SIZE, 2)
+
     results = sess.run(y_conv, feed_dict={
-        x : board_matrices
+        x : reshaped_zipped
       })
     return results
 
@@ -462,6 +488,19 @@ class Convbot_FIVE(GoBot):
   def generate_on_policy_after_n_moves(self, num_moves):
     pass
 
+  def from_board_to_input(self, board_input):
+    """
+    This is one of the functions that is going to differentiate
+    models.
+    """
+    liberty_map = util.output_liberty_map(board_input)
+    return np.asarray([board_input, liberty_map]).reshape((25, 2))
+
+  def from_many_boards_to_inputs(self, array_of_boards):
+    mapped =  map(self.from_board_to_input, array_of_boards)
+    return np.asarray(mapped)
+
+
 
   def gather_all_possible_results(self, board_input, previous_board, current_turn):
     """
@@ -486,13 +525,18 @@ class Convbot_FIVE(GoBot):
     valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
 
     resulting_boards = [util.update_board_from_move(board_input, move, 1) for move in valid_moves]
-    zipped = zip(valid_moves, resulting_boards)
+
+    resulting_inputs = self.from_many_boards_to_inputs(resulting_boards)
+
+
+
+    # resulting_inputs = map(self.from_board_to_input, resulting_boards)
     # end_results_of_boards = [self.get_results_of_board(new_board, board_input, -1, [move])
     #           for (move, new_board) in zipped] #this is -1, because it is next turn.
 
     
 
-
+    zipped = zip(valid_moves, resulting_inputs)
     end_results_of_boards = [self.get_result_of_board_from_random_policy(new_board, board_input, -1, [move])
               for (move, new_board) in zipped] #this is -1, because it is next turn.          
     
@@ -501,7 +545,7 @@ class Convbot_FIVE(GoBot):
     
     print("all boards simulated")
 
-    boards_before_and_after = zip(resulting_boards, end_results_of_boards)
+    boards_before_and_after = zip(resulting_inputs, end_results_of_boards)
     # Filter it to get rid of nones.
     boards_before_and_after = [(before, after) for (before, after) in boards_before_and_after
                                   if (before is not None) and (after is not None)]
@@ -514,26 +558,6 @@ class Convbot_FIVE(GoBot):
     return zip(true_value_of_boards, boards_before)
 
 
-    # values_and_boards = [(util.determine_winner(after), before)]                              
-    
-
-    # true_value_of_boards = [util.determine_winner(board) for board in end_results_of_boards]
-    # return zipped(true_value_of_boards, resulting_boards)
-
-
-
-
-
-    return
-
-    # valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, current_turn))
-    # resulting_boards = [util.update_board_from_move(board_matrix, move, current_turn) for move in valid_moves]
-    # zipped = zip(valid_moves, resulting_boards)
-    # end_results_of_boards = [self.get_results_of_board(new_board, board_input, (-1*current_turn), [move])
-    #           for (move, new_board) in zipped]
-    # true_value_of_boards = [util.determine_winner(board) for board in end_results_of_boards]
-    # print("results gathered")
-    # return zipped(true_value_of_boards, resulting_boards)
 
 
   def train_from_input_board(self, board_input, current_turn):
@@ -579,20 +603,21 @@ class Convbot_FIVE(GoBot):
     if current_turn == -1:
       board_input = -1* board_input
 
+
+
     all_results = self.gather_all_possible_results(board_input, None, 1) 
     # that's one because I flipped the board before.
     
     y_goal = np.asarray([[result[0]] for result in all_results])
 
-    boards = np.asarray([result[1] for result in all_results])
-    boards = boards.reshape((-1, BOARD_SIZE*BOARD_SIZE))
+    features = np.asarray([result[1] for result in all_results])
+    features = features.reshape((-1, BOARD_SIZE*BOARD_SIZE, 2))
 
     print("about to train")
-    for i in range(3): #just silly and arbitrary
-      sess.run(train_step, feed_dict={
-        x : boards,
-        y_ : y_goal
-      })
+    sess.run(train_step, feed_dict={
+      x : features,
+      y_ : y_goal
+    })
     print("trained")
 
   def train_from_empty_board(self):
@@ -645,12 +670,12 @@ class Convbot_FIVE(GoBot):
 def train_convbot_on_randoms(batch_num=0):
 
   load_path = None
-  save_path = './saved_models/basic_convnet/trained_on_' + str(1) + '_batch.ckpt'
+  save_path = './saved_models/convnet_with_features/trained_on_' + str(1) + '_batch.ckpt'
   if batch_num != 0:
-    load_path = './saved_models/basic_convnet/trained_on_' + str(batch_num) + '_batch.ckpt'
-    save_path = './saved_models/basic_convnet/trained_on_' + str(batch_num+1) + '_batch.ckpt'
+    load_path = './saved_models/convnet_with_features/trained_on_' + str(batch_num) + '_batch.ckpt'
+    save_path = './saved_models/convnet_with_features/trained_on_' + str(batch_num+1) + '_batch.ckpt'
 
-  b_c = Convbot_FIVE(load_path=load_path)
+  b_c = Convbot_FIVE_FEATURES(load_path=load_path)
   # for i in xrange(10):
   #   for num_moves in xrange(50, 75):
   #     b_c.train_on_random_board(num_moves)
@@ -664,12 +689,12 @@ def train_convbot_on_randoms(batch_num=0):
 
 def train_and_save_from_empty_input(batch_num=0):
   load_path = None
-  save_path = './saved_models/basic_convnet/trained_on_' + str(1) + '_batch.ckpt'
+  save_path = './saved_models/convnet_with_features/trained_on_' + str(1) + '_batch.ckpt'
   if batch_num != 0:
-    load_path = './saved_models/basic_convnet/trained_on_' + str(batch_num) + '_batch.ckpt'
-    save_path = './saved_models/basic_convnet/trained_on_' + str(batch_num+1) + '_batch.ckpt'
+    load_path = './saved_models/convnet_with_features/trained_on_' + str(batch_num) + '_batch.ckpt'
+    save_path = './saved_models/convnet_with_features/trained_on_' + str(batch_num+1) + '_batch.ckpt'
 
-  c_b = Convbot_FIVE(load_path=load_path)
+  c_b = Convbot_FIVE_FEATURES(load_path=load_path)
   c_b.train_from_empty_board()
   print("trained")
   c_b.save_to_path(save_path)
@@ -678,12 +703,12 @@ def train_and_save_from_empty_input(batch_num=0):
 
 def train_and_save_from_n_board_random(n, batch_num=0):
   load_path = None
-  save_path = './saved_models/basic_convnet/trained_on_' + str(1) + '_batch.ckpt'
+  save_path = './saved_models/convnet_with_features/trained_on_' + str(1) + '_batch.ckpt'
   if batch_num != 0:
-    load_path = './saved_models/basic_convnet/trained_on_' + str(batch_num) + '_batch.ckpt'
-    save_path = './saved_models/basic_convnet/trained_on_' + str(batch_num+1) + '_batch.ckpt'
+    load_path = './saved_models/convnet_with_features/trained_on_' + str(batch_num) + '_batch.ckpt'
+    save_path = './saved_models/convnet_with_features/trained_on_' + str(batch_num+1) + '_batch.ckpt'
 
-  c_b = Convbot_FIVE(load_path=load_path)
+  c_b = Convbot_FIVE_FEATURES(load_path=load_path)
   
   for i in range(10):
     print("training on sub-batch " + str(i))
@@ -707,30 +732,14 @@ def train_and_save_from_n_board_random(n, batch_num=0):
 if __name__ == '__main__':
   # b_c = Basic_ConvBot()
   print("training!")
-  # train_convbot_on_randoms(load_path='./saved_models/more_basic_convnet/trained_on_2_batch.ckpt')
+  # train_convbot_on_randoms(load_path='./saved_models/more_convnet_with_features/trained_on_2_batch.ckpt')
   
   # train_and_save_from_empty_input(batch_num=3)
-  for i in range(100, 200):
+  for i in range(0, 100):
     train_and_save_from_n_board_random((i * 7) % 20, batch_num=i)
-  # for i in range(39, 250):
-  #   train_convbot_on_randoms(batch_num=i)
 
-  # train_convbot_on_randoms()
   print("trained!")
 
-  # starting_boards = []
-  # for i in xrange(81):
-  #   j = [0 for k in xrange(81)]
-  #   j[i]=1
-  #   starting_boards.append(j)
-
-  # print(b_c.evaluate_boards(starting_boards))
-  # # print(b_c.evaluate_boards(starting_boards))
-  # starting_board = np.zeros((9,9))
-  # result = b_c.get_results_of_board(starting_board, starting_board, 1, [])
-
-  # print("\n\n\n results:\n")
-  # print(result)
 
 
 

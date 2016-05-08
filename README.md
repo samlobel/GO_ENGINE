@@ -126,4 +126,25 @@ http://www.cosumi.net/en/   is a great resource.
 
 By the way, I really should make the network deeper, as well as pass in the total liberties per group as an input. It's a great idea.
 
+I need to make a policy network for training. When it picks the next move, 
+it should go based off of percentages given by the policy network.
+And the policy network should learn from the value network.
+
+How should the policy network output its answers? Softmax temperature!
+That's super interesting, it's perfect. But, it looks like there's no option
+for it, so I'm going to need to code my own softmax function.
+
+And it can go both ways! The softmax should be used in picking moves for simulation, but also when you train the policy network based on the value
+network, you can try and shoot it so that the policy network learns probabilities in proportion to softmax of the values.
+
+The more annoying thing is, I'm not exactly sure how to output the answer from the softmax.
+
+I should train the policy network using the values of the moves. I guess that the policy network should just output a string that's 26 long or something (5x5 + passing). That's sort of a weird thing to do, but whatever. It would be much nicer if we could use something convolutional.
+
+
+I'm ending at not-the-best spot. I'm sort of in the middle of the process of adding features, it's been messsy withthe dimension changing part of it. BUT,
+it's going to start working again
+
+
+
 

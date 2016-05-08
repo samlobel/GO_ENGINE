@@ -135,6 +135,20 @@ def test_get_group_around_stone():
 #   assert True
 #   print "test_remove_stones_in_group: success!"
 
+
+def test_count_liberties_around_group():
+  b2_end_goal = np.asarray([
+    [ 0, 1,-6, 0],
+    [ 1, 1,-6, 0],
+    [-6,-6,-6, 0],
+    [ 0, 0, 0, 0]
+  ])
+  l_map = output_liberty_map(b2_4x4)
+  # print l_map
+  # print b2_end_goal
+  assert boards_are_equal(b2_end_goal, l_map)
+  assert boards_are_equal(b1_4x4, output_liberty_map(b1_4x4)) 
+
 def test_remove_group_around_stone():
   copy_3 = copy(b3_4x4)
   end_goal = np.asarray(
@@ -206,6 +220,7 @@ if __name__ == '__main__':
   # test_count_liberties() #Only a helper function. Can test through parent function.
   test_count_liberties_around_stone()
   test_get_group_around_stone()
+  test_count_liberties_around_group()
   # test_confirm_group_is_one_color()
   # test_remove_stones_in_group()
   test_remove_group_around_stone()
