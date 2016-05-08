@@ -1,5 +1,4 @@
 venv/*
 *.pyc
-*/saved_models/*
-saved_models/*
-*/saved_models/*
+saved_models
+.DS_STORE
