@@ -20,7 +20,8 @@ from go_util import util
 # from NNET.NINE.better_learning_convnet import Better_Learner_ConvBot
 from NNET.FIVE.basic_convnet import Convbot_FIVE
 # from NNET.FIVE.convnet_with_features import Convbot_FIVE_FEATURES
-# 
+from NNET.FIVE.convnet_with_policy import Convbot_FIVE_POLICY
+
 from NNET.NINE.random_mover import Random_Mover
 
 import time
@@ -214,7 +215,13 @@ class Board:
     if self.board_metadata['black_player'] == 'AI':
       # self.board_metadata['black_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_1_batch.ckpt")
       # self.board_metadata['black_AI'] = Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_91_batch.ckpt")
-      self.board_metadata['black_AI'] = Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_50_batch.ckpt")
+      self.board_metadata['black_AI'] = Convbot_FIVE()
+      # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_25_batch.ckpt")
+
+      # 
+
+      # 
+      
       # Convbot_FIVE_FEATURES()
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_99_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
@@ -230,7 +237,13 @@ class Board:
       
     if self.board_metadata['white_player'] == 'AI':
       # self.board_metadata['white_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
-      self.board_metadata['white_AI'] = Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_100_batch.ckpt")
+      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY(load_path="../NNET/FIVE/saved_models/convnet_with_policy/trained_on_10_batch.ckpt")
+
+      # Convbot_FIVE_POLICY()
+
+      # 
+      
+      # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_100_batch.ckpt")
       # Convbot_FIVE_FEATURES()
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_200_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))

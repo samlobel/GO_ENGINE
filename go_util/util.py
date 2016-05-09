@@ -39,6 +39,7 @@ def move_is_on_board(board_matrix, move_tuple):
   A simple check to see if a move is on the board, or out of bounds. Utility function.
   """
 
+
   if type(move_tuple) is not tuple:
     raise Exception("move tuple must be a tuple, in move_is_on_board")
 

@@ -23,18 +23,34 @@ BOARD_SIZE = 5
 MAX_TO_KEEP = 100
 KEEP_CHECKPOINT_EVERY_N_HOURS = 0.0167
 
+# TRAIN_OR_TEST = "TRAIN"
+TRAIN_OR_TEST = "TEST"
 
-def weight_variable(shape):
+NAME_PREFIX='fivebot_small_'
+
+
+
+def prefixize(suffix):
+  return NAME_PREFIX + suffix
+
+
+def weight_variable(shape, suffix):
+  if suffix is None or type(suffix) is not str:
+    raise Exception("bad weight initialization")
   initial = tf.truncated_normal(shape, stddev=0.1)
-  return tf.Variable(initial)
+  return tf.Variable(initial, name=prefixize(suffix))
 
-def bias_variable(shape):
+def bias_variable(shape, suffix):
+  if suffix is None or type(suffix) is not str:
+    raise Exception("bad bias initialization")  
   initial = tf.constant(0.1, shape=shape)
-  return tf.Variable(initial)
+  return tf.Variable(initial, name=prefixize(suffix))
 
-def last_row_bias(shape):
+def last_row_bias(shape, suffix):
+  if suffix is None or type(suffix) is not str:
+    raise Exception("bad last-row bias initialization")  
   initial = tf.constant(1.0, shape=shape)
-  return tf.Variable(initial)
+  return tf.Variable(initial, name=prefixize(suffix))
 
 
 def conv2d(x,W):
@@ -48,16 +64,16 @@ def conv2d(x,W):
 
 
 
-x = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE])
-y_ = tf.placeholder(tf.float32, [None,1])
+x = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE], name=prefixize('x'))
+y_ = tf.placeholder(tf.float32, [None,1], name=prefixize("y_"))
 
 
-W_conv1 = weight_variable([3,3,1,10])
-b_conv1 = bias_variable([10])
+W_conv1 = weight_variable([3,3,1,10], suffix="W_conv1")
+b_conv1 = bias_variable([10], suffix="b_conv1")
 
-x_image = tf.reshape(x,[-1,BOARD_SIZE,BOARD_SIZE,1])
+x_image = tf.reshape(x,[-1,BOARD_SIZE,BOARD_SIZE,1], name=prefixize("x_image"))
 
-h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
+h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1, name=prefixize("h_conv1"))
 
 
 # W_conv2 = weight_variable([2,2,5,10])
@@ -66,11 +82,11 @@ h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
 # h_conv2 = tf.nn.relu(conv2d(h_conv1, W_conv2) + b_conv2)
 
 
-W_fc1 = tf.Variable(tf.random_uniform([3*3*10,1],-0.1,0.1))
-b_fc1 = last_row_bias([1])
+W_fc1 = tf.Variable(tf.random_uniform([3*3*10,1],-0.1,0.1), name=prefixize("W_fc1"))
+b_fc1 = last_row_bias([1], suffix="b_fc1")
 
-h_conv1_flat = tf.reshape(h_conv1, [-1, 3*3*10])
-y_conv = tf.nn.tanh(tf.matmul(h_conv1_flat, W_fc1) + b_fc1)
+h_conv1_flat = tf.reshape(h_conv1, [-1, 3*3*10], name=prefixize("h_conv1_flat"))
+y_conv = tf.nn.tanh(tf.matmul(h_conv1_flat, W_fc1) + b_fc1, name=prefixize("y_conv"))
 
 # W_fc3 = weight_variable([128, 1])
 # b_fc3 = bias_variable([1])
@@ -78,18 +94,45 @@ y_conv = tf.nn.tanh(tf.matmul(h_conv1_flat, W_fc1) + b_fc1)
 # h_fc3
 
 # cross_entropy = -tf.reduce_sum(y_ * tf.log(y_conv), reduction_indices=[1])
-cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y_conv), reduction_indices=[1]))
-mean_square = tf.reduce_mean(tf.reduce_sum((y_ - y_conv)**2, reduction_indices=[1]))
+cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y_conv), reduction_indices=[1]), name=prefixize("cross_entropy"))
+mean_square = tf.reduce_mean(tf.reduce_sum((y_ - y_conv)**2, reduction_indices=[1]), name=prefixize("mean_square"))
 
 error_metric = mean_square
 
-train_step = tf.train.AdamOptimizer(1e-4).minimize(error_metric)
+# AdamOptimizer = tf.train.AdamOptimizer(1e-4, name=prefixize("Adam_Optimizer"))
+# train_step = AdamOptimizer.minimize(error_metric, name=prefixize("train_step"))
+AdamOptimizer = tf.train.AdamOptimizer(1e-4)
+train_step = AdamOptimizer.minimize(error_metric)
+
+# train_step = tf.train.AdamOptimizer(1e-4).minimize(error_metric, name=prefixize("train_step"))
+
+all_variables = tf.all_variables()
+if TRAIN_OR_TEST == "TRAIN":
+  relavent_variables = all_variables
+elif TRAIN_OR_TEST == "TEST":
+  relavent_variables = [v for v in all_variables if (type(v.name) is unicode) and (v.name.startswith(NAME_PREFIX))]
+else:
+  raise Exception("TRAIN_OR_TEST must be TRAIN or TEST. Duh.")
+  # relavent_variables = [v for v in all_variables if (type(v.name) is unicode) and (v.name.startswith(NAME_PREFIX))]
+
+# AdamOptimizer_variable_names = AdamOptimizer.get_slot_names()
+# print(AdamOptimizer_variable_names)
+# AdamOptimizer_variables = [tf.train.AdamOptimizer.get_slot(AdamOptimizer, name) for name in AdamOptimizer_variable_names]
+# print(AdamOptimizer_variables)
+# relavent_variables.extend(AdamOptimizer_variables)
+# print([v.name for v in all_variables])
+# print([v.name for v in relavent_variables])
+# # print([type(v.name) for v in all_variables])
+# print(AdamOptimizer_variables)
 
 
-saver = tf.train.Saver(max_to_keep=MAX_TO_KEEP,
-   keep_checkpoint_every_n_hours = KEEP_CHECKPOINT_EVERY_N_HOURS)
+
+saver = tf.train.Saver(var_list=relavent_variables, max_to_keep=MAX_TO_KEEP,
+   keep_checkpoint_every_n_hours = KEEP_CHECKPOINT_EVERY_N_HOURS,
+   name=prefixize("saver"))
 
 sess = tf.Session()
+
 
 
 
@@ -113,7 +156,8 @@ class Convbot_FIVE(GoBot):
     # sess = tf.Session()
     self.load_path = load_path
     if load_path is None:
-      init = tf.initialize_all_variables()
+      # init = tf.initialize_all_variables()
+      init = tf.initialize_variables(relavent_variables, name=prefixize("init"))
       sess.run(init)
       print("Initialized")
     else:
@@ -710,7 +754,7 @@ if __name__ == '__main__':
   # train_convbot_on_randoms(load_path='./saved_models/more_basic_convnet/trained_on_2_batch.ckpt')
   
   # train_and_save_from_empty_input(batch_num=3)
-  for i in range(100, 200):
+  for i in range(0, 100):
     train_and_save_from_n_board_random((i * 7) % 20, batch_num=i)
   # for i in range(39, 250):
   #   train_convbot_on_randoms(batch_num=i)

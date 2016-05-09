@@ -17,6 +17,15 @@ from copy import deepcopy as copy
 # from tensorflow.examples.tutorials.mnist import input_data
 # mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
 
+
+
+# I'm burning this one for now. I got too funky with the shapes.
+
+TRAIN_OR_TEST = "TEST"
+
+NAME_PREFIX='fivebot_small_'
+
+
 BOARD_SIZE = 5
 
 
@@ -428,6 +437,7 @@ class Convbot_FIVE_FEATURES(GoBot):
       move_list = [None]
     if move_list is None:
       move_list=[]
+
 
     while not ((len(move_list) >= 2) and (move_list[-1] is None) and (move_list[-2] is None)):
       # print ("move: " + str(len(move_list)))

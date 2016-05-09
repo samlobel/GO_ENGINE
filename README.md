@@ -146,5 +146,7 @@ I'm ending at not-the-best spot. I'm sort of in the middle of the process of add
 it's going to start working again
 
 
+I really can't get past this problem with the AdamOptimizer. It seems like a big design problem. On the other hand, it's WAY better for convergance, especially when I'm going to have policy gradient stuff. Honestly, I'm lost.
+
 
 
