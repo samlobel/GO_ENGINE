@@ -495,9 +495,6 @@ class Convbot_FIVE_FEATURES(GoBot):
     # return self.get_results_of_board(best_new_board, board_matrix, current_turn*-1, move_list)
 
 
-  def generate_on_policy_after_n_moves(self, num_moves):
-    pass
-
   def from_board_to_input(self, board_input):
     """
     This is one of the functions that is going to differentiate
@@ -512,137 +509,137 @@ class Convbot_FIVE_FEATURES(GoBot):
 
 
 
-  def gather_all_possible_results(self, board_input, previous_board, current_turn):
-    """
-    Shit, is this wrong too? I should switch it beforehand, just to be safe.
+  # def gather_all_possible_results(self, board_input, previous_board, current_turn):
+  #   """
+  #   Shit, is this wrong too? I should switch it beforehand, just to be safe.
     
-    To judge a board, I ALWAYS need to make sure it's white's turn.
-    So I make the initial one BLACK's turn, then simulate one move in the future,
-    and then 
+  #   To judge a board, I ALWAYS need to make sure it's white's turn.
+  #   So I make the initial one BLACK's turn, then simulate one move in the future,
+  #   and then 
 
-    BIG CHANGE! I'M GOING TO SWITCH TO DOING RANDOM SIMULATIONS AFTER
-    I MAKE A DETERMINISTIC MOVE. THAT WAY I CAN BETTER EXPLORE THE STATE SPACE.
-
-
-    """
-    print("gathering results")
-
-    if current_turn == -1:
-      board_input = -1 * board_input
-    if (current_turn == -1) and (previous_board is not None):
-      previous_board = -1 * previous_board
-
-    valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
-
-    resulting_boards = [util.update_board_from_move(board_input, move, 1) for move in valid_moves]
-
-    resulting_inputs = self.from_many_boards_to_inputs(resulting_boards)
+  #   BIG CHANGE! I'M GOING TO SWITCH TO DOING RANDOM SIMULATIONS AFTER
+  #   I MAKE A DETERMINISTIC MOVE. THAT WAY I CAN BETTER EXPLORE THE STATE SPACE.
 
 
+  #   """
+  #   print("gathering results")
 
-    # resulting_inputs = map(self.from_board_to_input, resulting_boards)
-    # end_results_of_boards = [self.get_results_of_board(new_board, board_input, -1, [move])
-    #           for (move, new_board) in zipped] #this is -1, because it is next turn.
+  #   if current_turn == -1:
+  #     board_input = -1 * board_input
+  #   if (current_turn == -1) and (previous_board is not None):
+  #     previous_board = -1 * previous_board
 
-    
+  #   valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
 
-    zipped = zip(valid_moves, resulting_inputs)
-    end_results_of_boards = [self.get_result_of_board_from_random_policy(new_board, board_input, -1, [move])
-              for (move, new_board) in zipped] #this is -1, because it is next turn.          
+  #   resulting_boards = [util.update_board_from_move(board_input, move, 1) for move in valid_moves]
+
+  #   resulting_inputs = self.from_many_boards_to_inputs(resulting_boards)
+
+
+
+  #   # resulting_inputs = map(self.from_board_to_input, resulting_boards)
+  #   # end_results_of_boards = [self.get_results_of_board(new_board, board_input, -1, [move])
+  #   #           for (move, new_board) in zipped] #this is -1, because it is next turn.
+
     
 
+  #   zipped = zip(valid_moves, resulting_inputs)
+  #   end_results_of_boards = [self.get_result_of_board_from_random_policy(new_board, board_input, -1, [move])
+  #             for (move, new_board) in zipped] #this is -1, because it is next turn.          
+    
+
 
     
-    print("all boards simulated")
+  #   print("all boards simulated")
 
-    boards_before_and_after = zip(resulting_inputs, end_results_of_boards)
-    # Filter it to get rid of nones.
-    boards_before_and_after = [(before, after) for (before, after) in boards_before_and_after
-                                  if (before is not None) and (after is not None)]
+  #   boards_before_and_after = zip(resulting_inputs, end_results_of_boards)
+  #   # Filter it to get rid of nones.
+  #   boards_before_and_after = [(before, after) for (before, after) in boards_before_and_after
+  #                                 if (before is not None) and (after is not None)]
 
-    boards_before = [before for (before, after) in boards_before_and_after] #filtered
-    boards_after = [after for (before, after) in boards_before_and_after] #filtered
+  #   boards_before = [before for (before, after) in boards_before_and_after] #filtered
+  #   boards_after = [after for (before, after) in boards_before_and_after] #filtered
 
-    true_value_of_boards = [util.determine_winner(board) for board in boards_after]
-    # returning true values with all moves one after input.
-    return zip(true_value_of_boards, boards_before)
-
-
+  #   true_value_of_boards = [util.determine_winner(board) for board in boards_after]
+  #   # returning true values with all moves one after input.
+  #   return zip(true_value_of_boards, boards_before)
 
 
-  def train_from_input_board(self, board_input, current_turn):
-    """
-    If the current_turn is 1, that means that these boards have white going first.
-    That's good. Our evaluator tells us, if it's white's turn, what are the
-    chances that black wins. 
+
+
+  # def train_from_input_board(self, board_input, current_turn):
+  #   """
+  #   If the current_turn is 1, that means that these boards have white going first.
+  #   That's good. Our evaluator tells us, if it's white's turn, what are the
+  #   chances that black wins. 
     
-    If the current_turn is -1, that means that they have black going first.
-    In that case, since our evaluator tells us the chance of black winning if
-    it is white's turn, that means we need to 
+  #   If the current_turn is -1, that means that they have black going first.
+  #   In that case, since our evaluator tells us the chance of black winning if
+  #   it is white's turn, that means we need to 
 
 
-    The winner in all_results is the chance that BLACK wins. If it's white's turn
-    that means we're evaluating from white's perspective. I think maybe I do
-    have a negative wrong. Time to write it all out again.
+  #   The winner in all_results is the chance that BLACK wins. If it's white's turn
+  #   that means we're evaluating from white's perspective. I think maybe I do
+  #   have a negative wrong. Time to write it all out again.
 
-    If it's white's turn, he wants to do the move that's most likely
-    to have him win. If you flip the board, and also flip who it is,
-    and do the analysis, and BLACK wins, that would mean that WHITE would
-    win in the original game. So, to choose the best move, if it's white's
-    turn, you flip the board, make it's black's turn, and figure out what's
-    most likely to make black win.
+  #   If it's white's turn, he wants to do the move that's most likely
+  #   to have him win. If you flip the board, and also flip who it is,
+  #   and do the analysis, and BLACK wins, that would mean that WHITE would
+  #   win in the original game. So, to choose the best move, if it's white's
+  #   turn, you flip the board, make it's black's turn, and figure out what's
+  #   most likely to make black win.
 
-    If current_turn == -1:
-      flip the input board. Generate all possible moves for BLACK (1) going
-      on the flipped board. Evaluate all of these boards. Choose the one that
-      says its most likely that BLACK wins.
+  #   If current_turn == -1:
+  #     flip the input board. Generate all possible moves for BLACK (1) going
+  #     on the flipped board. Evaluate all of these boards. Choose the one that
+  #     says its most likely that BLACK wins.
 
-    To train, if it's white's turn:
-    if current_turn == -1:
-      flip the input board. Generate all possible moves (and corresponding
-      positions) for BLACK (1) going on the flipped board. Then, take
-      these games to their natural conclusion. If BLACK wins
-      (determine_winner returns 1), that's a positive result 
-      (meaning it would be a good move). You also do evaluation on
-      all of these possible next-positions. A high result means that,
-      if it's WHITE's turn now, that you think BLACK is going to win.
-      So, after this, you optimize so that the generated value is closer 
-      to the calculated one for ALL of the boards.
+  #   To train, if it's white's turn:
+  #   if current_turn == -1:
+  #     flip the input board. Generate all possible moves (and corresponding
+  #     positions) for BLACK (1) going on the flipped board. Then, take
+  #     these games to their natural conclusion. If BLACK wins
+  #     (determine_winner returns 1), that's a positive result 
+  #     (meaning it would be a good move). You also do evaluation on
+  #     all of these possible next-positions. A high result means that,
+  #     if it's WHITE's turn now, that you think BLACK is going to win.
+  #     So, after this, you optimize so that the generated value is closer 
+  #     to the calculated one for ALL of the boards.
 
-    """
-    if current_turn == -1:
-      board_input = -1* board_input
+  #   """
+  #   if current_turn == -1:
+  #     board_input = -1* board_input
 
 
 
-    all_results = self.gather_all_possible_results(board_input, None, 1) 
-    # that's one because I flipped the board before.
+  #   all_results = self.gather_all_possible_results(board_input, None, 1) 
+  #   # that's one because I flipped the board before.
     
-    y_goal = np.asarray([[result[0]] for result in all_results])
+  #   y_goal = np.asarray([[result[0]] for result in all_results])
 
-    features = np.asarray([result[1] for result in all_results])
-    features = features.reshape((-1, BOARD_SIZE*BOARD_SIZE, 2))
+  #   features = np.asarray([result[1] for result in all_results])
+  #   features = features.reshape((-1, BOARD_SIZE*BOARD_SIZE, 2))
 
-    print("about to train")
-    sess.run(train_step, feed_dict={
-      x : features,
-      y_ : y_goal
-    })
-    print("trained")
+  #   print("about to train")
+  #   sess.run(train_step, feed_dict={
+  #     x : features,
+  #     y_ : y_goal
+  #   })
+  #   print("trained")
 
-  def train_from_empty_board(self):
-    starting_board = np.zeros((BOARD_SIZE,BOARD_SIZE))
-    starting_turn = 1
-    print("about to train")
-    self.train_from_input_board(starting_board, starting_turn)
-    print("trained")
+  # def train_from_empty_board(self):
+  #   starting_board = np.zeros((BOARD_SIZE,BOARD_SIZE))
+  #   starting_turn = 1
+  #   print("about to train")
+  #   self.train_from_input_board(starting_board, starting_turn)
+  #   print("trained")
 
 
-  def train_from_board_after_n_moves(self, num_moves):
-    random_board, starting_turn = util.generate_random_board((BOARD_SIZE,BOARD_SIZE), num_moves)
-    print("about to train on random board after " + str(num_moves) + "moves")
-    self.train_from_input_board(random_board, starting_turn)
-    print("trained")
+  # def train_from_board_after_n_moves(self, num_moves):
+  #   random_board, starting_turn = util.generate_random_board((BOARD_SIZE,BOARD_SIZE), num_moves)
+  #   print("about to train on random board after " + str(num_moves) + "moves")
+  #   self.train_from_input_board(random_board, starting_turn)
+  #   print("trained")
 
 
 
