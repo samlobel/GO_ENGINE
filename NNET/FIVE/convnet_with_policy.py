@@ -48,6 +48,31 @@ def prefixize(suffix):
   return NAME_PREFIX + suffix
 
 
+def from_index_to_move_tuple(index):
+  if index < 0:
+    raise Exception("index must be in bounds of board")
+  elif index > BOARD_SIZE*BOARD_SIZE:
+    raise Exception("index must be in bounds of board")
+  elif index == BOARD_SIZE*BOARD_SIZE:
+    return None
+  else:
+    tup = (index // BOARD_SIZE, index % BOARD_SIZE)
+    return tup
+
+def from_move_tuple_to_index(tup):
+  if tup is None:
+    return BOARD_SIZE*BOARD_SIZE
+  else:
+    r,c = tup
+    if (r >= BOARD_SIZE) or (c >= BOARD_SIZE):
+      raise Exception("rows and columns must both be present on board")
+    elif (r < 0) or (c < 0):
+      raise Exception("rows and columns must both be present on board")
+    else:
+      index = 5*r + c
+      return index
+
+
 def weight_variable(shape, suffix):
   if suffix is None or type(suffix) is not str:
     raise Exception("bad weight initialization")
@@ -97,7 +122,8 @@ INPUTS/OUTPUTS:
 x : These are board inputs. The inputs are used for training and testing,
 for both the policy network and the value network.
 The y_ output is used for training just the value network
-The moves_ output is used for training just the policy network.
+the computed_values_for_moves goes into a softmax to create the target
+output for the policy network.
 """
 
 x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE], name=prefixize('x_value'))
@@ -106,7 +132,9 @@ x_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE], name=prefix
 softmax_temperature_policy = tf.placeholder(tf.float32, [], name=prefixize('softmax_temperature_policy'))
 
 y_ = tf.placeholder(tf.float32, [None, 1], name=prefixize("y_"))
-moves_ = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('moves_'))
+
+computed_values_for_moves = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('computed_values_for_moves'))
+
 
 """
 VALUE NETWORK VARIABLES
@@ -114,7 +142,7 @@ All variables used for the value network, including outputs.
 Note that the optimizers don't have names, for either.
 
 These should all end in the word 'value'.
-  """
+"""
 
 
 
@@ -194,7 +222,11 @@ softmax_input_policy = tf.matmul(h_fc1_policy,W_fc2_policy) + b_fc2_policy
 softmax_output_policy = softmax_with_temp(softmax_input_policy, softmax_temperature_policy, suffix="softmax_output_policy")
 
 
-cross_entropy_policy = tf.reduce_mean(-tf.reduce_sum(moves_ * tf.log(softmax_output_policy), reduction_indices=[1]), name=prefixize("cross_entropy_policy"))
+softmax_of_target_policy = softmax_with_temp(computed_values_for_moves, softmax_temperature_policy, suffix="softmax_of_target_policy")
+
+
+
+cross_entropy_policy = tf.reduce_mean(-tf.reduce_sum(softmax_of_target_policy * tf.log(softmax_output_policy), reduction_indices=[1]), name=prefixize("cross_entropy_policy"))
 
 error_metric_policy = cross_entropy_policy
 
@@ -511,14 +543,12 @@ class Convbot_FIVE_POLICY(GoBot):
       softmax_temperature_policy : temperature
     })
     legal_moves = np.zeros(BOARD_SIZE*BOARD_SIZE + 1, dtype=np.float32)
-    for i in xrange(BOARD_SIZE*BOARD_SIZE):
-      tup = ( i // BOARD_SIZE, i % BOARD_SIZE ) ##NOTE THIS COULD BE BACKWARDS.
-      # But now I think it's right.
-      if util.move_is_valid(board_matrix, tup, 1, previous_board):
+    for i in xrange(BOARD_SIZE*BOARD_SIZE+1):
+      move = from_index_to_move_tuple(i) #This should include None.
+      if util.move_is_valid(board_matrix, move, 1, previous_board):
         legal_moves[i] = 1.0
       else:
         continue
-    legal_moves[-1] = 1.0 # This is because None is always a valid move.
 
     only_legal_probs = output_probs * legal_moves
     normalized_legal_probs = only_legal_probs / np.sum(only_legal_probs)
@@ -536,11 +566,8 @@ class Convbot_FIVE_POLICY(GoBot):
       print(prob_sum)
       raise Exception("for some reason, prob_sum did not catch random_number")
 
-    if desired_index = BOARD_SIZE*BOARD_SIZE:
-      return None
-    else:
-      tup = ( i // BOARD_SIZE, i % BOARD_SIZE )
-      return tup
+    tup = from_index_to_move_tuple(desired_index)
+    return tup
     
 
   def generate_board_from_n_on_policy_moves(self, n):
@@ -680,18 +707,81 @@ class Convbot_FIVE_POLICY(GoBot):
       previous_board = -1 * previous_board
 
     valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
-    board_value_pair_list = []
+    value_board_move_list = []
     for move in valid_moves:
       resulting_board = util.update_board_from_move(board_input, move, 1)
       board_value = self.get_average_result_of_board_on_policy(resulting_board, board_input, -1, [move])
       # This should be using -1 because we're playing from the other guy now.
-      board_value_pair_list.append((board_value, resulting_board))
+      value_board_move_list.append((board_value, resulting_board, move))
 
-    return board_value_pair_list
+    return value_board_move_list
+
+  def from_value_board_move_list_to_value_list(self, value_board_move_list):
+    possible_moves_length = BOARD_SIZE*BOARD_SIZE+1
+    goal_array = np.full((possible_moves_length, ), -10000.0, np.float32)
+
+    for (value, board, move) in value_board_move_list:
+      # input_board = board_to_input_transform(board)
+      computed_board_value = self.evaluate_board(board)
+      move_index = from_move_tuple_to_index(move)
+      goal_array[move_index] = computed_board_value
+
+    
+
+
 
 
   def train_policy_and_value_from_input(self, board_input, current_turn):
-    pass
+    if current_turn == -1:
+      board_input = -1* board_input
+      current_turn = 1
+
+    value_board_move_list = self.gather_all_possible_results(board_input, None, 1)
+    
+    y_goal = np.asarray([value for (value, board, move) in value_board_move_list])
+    boards = np.asarray([board for (value, board, move) in value_board_move_list])
+
+    boards = boards.reshape((-1, BOARD_SIZE*BOARD_SIZE))
+
+    sess.run(train_step_value, feed_dict={
+      x : boards,
+      y_ : y_goal
+    })
+    
+    print("trained value network on all resulting boards")
+    value_list = self.from_value_board_move_list_to_value_list(value_board_move_list)
+    value_list = np.asarray([value_list], dtype=np.float32)
+    print("created true value list. Its shape is :  " + str(value_list.shape) + " . Should be 1,26")
+
+
+    board_input = self.board_to_input_transform(board_input)
+    sess.run(train_step_policy, feed_dict={
+      x_policy : board_input,
+      computed_values_for_moves : value_list
+    })
+
+    print("updated policy network!")
+
+
+  def train_policy_and_value_from_on_policy_board_after_n_steps(self, n):
+    current_board, current_turn = self.generate_board_from_n_on_policy_moves(n)
+    print("generated board.")
+    self.train_policy_and_value_from_input(current_board, current_turn)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   def train_from_input_board(self, board_input, current_turn):
@@ -840,6 +930,21 @@ def train_and_save_from_n_board_random(n, batch_num=0):
     print("training on sub-batch " + str(i))
     c_b.train_from_board_after_n_moves(n)
   print("trained")
+  c_b.save_to_path(save_path)
+  print("saved!")
+
+
+def train_and_save_from_n_move_board(n, batch_num=0):
+  load_path = None
+  save_path = './saved_models/convnet_with_policy/trained_on_' + str(1) + '_batch.ckpt'
+  if batch_num != 0:
+    load_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num) + '_batch.ckpt'
+    save_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num+1) + '_batch.ckpt'
+
+  c_b = Convbot_FIVE_POLICY(load_path=load_path)
+
+  print("training!")
+  c_b.train_policy_and_value_from_on_policy_board_after_n_steps(n)
   c_b.save_to_path(save_path)
   print("saved!")
 
