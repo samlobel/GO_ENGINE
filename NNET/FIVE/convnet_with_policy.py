@@ -13,6 +13,7 @@ from NNET.interface import GoBot
 from go_util import util
 
 from copy import deepcopy as copy
+import random
 
 # from tensorflow.examples.tutorials.mnist import input_data
 # mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
@@ -25,6 +26,8 @@ TRAIN_OR_TEST = "TEST"
 NAME_PREFIX='fivebot_policy_'
 
 BOARD_SIZE = 5
+
+NUM_FEATURES = 1
 
 
 MAX_TO_KEEP = 100
@@ -55,8 +58,29 @@ def last_row_bias(shape, suffix):
   return tf.Variable(initial, name=prefixize(suffix))
 
 
-def conv2d(x,W):
-  return tf.nn.conv2d(x,W,strides=[1,1,1,1],padding='VALID')
+def conv2d(x,W, padding='VALID'):
+  if not (padding=='SAME' or padding=='VALID'):
+    print(padding)
+    raise Exception("padding must be either SAME or VALID")
+  return tf.nn.conv2d(x,W,strides=[1,1,1,1],padding=padding)
+
+def softmax_with_temp(softmax_input, temperature, suffix):
+  # NOTE THAT TEMP MUST BE A SCALAR.
+  if temperature == 0:
+    print(temperature)
+    raise Exception("temperature cannot be zero! Printed above")
+  if temperature < 0:
+    print(temperature)
+    raise Exception("temperature cannot be negative! Printed above")
+  if suffix is None or type(suffix) is not str:
+    raise Exception("bad softmax initialization")
+
+  exponents = tf.exp(tf.scalar_mul((1.0/temperature), softmax_input))
+  sum_per_layer = tf.reduce_sum(exponents, reduction_indices=[1])
+  softmax = tf.div(exponents, sum_per_layer, name=prefixize(suffix))
+  return softmax
+
+
 
 # def conv2d_skip(x,W):
 #   return tf.nn.conv2d(x,W,strides=[1,2,2,1],padding='SAME')
@@ -65,47 +89,131 @@ def conv2d(x,W):
 #   return tf.nn.max_pool(x, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
 
+"""
+INPUTS/OUTPUTS: 
+x : These are board inputs. The inputs are used for training and testing,
+for both the policy network and the value network.
+The y_ output is used for training just the value network
+The moves_ output is used for training just the policy network.
+"""
 
-x = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE], name=prefixize('x'))
-y_ = tf.placeholder(tf.float32, [None,1], name=prefixize("y_"))
+x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE], name=prefixize('x_value'))
+
+x_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE], name=prefixize('x_policy'))
+softmax_temperature_policy = tf.placeholder(tf.float32, [], name=prefixize('softmax_temperature_policy'))
+
+y_ = tf.placeholder(tf.float32, [None, 1], name=prefixize("y_"))
+moves_ = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('moves_'))
+
+"""
+VALUE NETWORK VARIABLES
+All variables used for the value network, including outputs.
+Note that the optimizers don't have names, for either.
+
+These should all end in the word 'value'.
+  """
 
 
-W_conv1 = weight_variable([3,3,1,10], suffix="W_conv1")
-b_conv1 = bias_variable([10], suffix="b_conv1")
 
-x_image = tf.reshape(x,[-1,BOARD_SIZE,BOARD_SIZE,1], name=prefixize("x_image"))
+W_conv1_value = weight_variable([3,3,1,20], suffix="W_conv1_value")
+b_conv1_value = bias_variable([20], suffix="b_conv1_value")
 
-h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1, name=prefixize("h_conv1"))
+x_image_value = tf.reshape(x_value, [-1,BOARD_SIZE,BOARD_SIZE,1], name=prefixize("x_image_value"))
+
+h_conv1_value = tf.nn.relu(conv2d(x_image_value, W_conv1_value, padding="VALID") + b_conv1_value, name=prefixize("h_conv1_value"))
+
+W_conv2_value = weight_variable([2,2,20,20], suffix="W_conv2_value")
+b_conv2_value = bias_variable([20], suffix="b_conv2_value")
+h_conv2_value = tf.nn.relu(conv2d(h_conv1_value, W_conv2_value, padding="VALID") + b_conv2_value, name=prefixize("h_conv2_value"))
+
+W_fc1_value = tf.Variable(tf.random_uniform([2*2*20,1],-0.1,0.1), name=prefixize("W_fc1_value"))
+b_fc1_value = last_row_bias([1], suffix="b_fc1_value")
+
+h_conv2_flat_value = tf.reshape(h_conv2_value, [-1, 2*2*20], name=prefixize("h_conv2_flat_value"))
+y_conv_value = tf.nn.tanh(tf.matmul(h_conv2_flat_value, W_fc1_value) + b_fc1_value, name=prefixize("y_conv_value"))
+
+cross_entropy_value = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y_conv_value), reduction_indices=[1]), name=prefixize("cross_entropy_value"))
+# mean_square_value = tf.reduce_mean(tf.reduce_sum((y_ - y_conv_value)**2, reduction_indices=[1]), name=prefixize("mean_square_value"))
+mean_square_value = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(y_, y_conv_value), reduction_indices=[1]), name=prefixize("mean_square_value"))
+
+error_metric_value = mean_square_value
+
+AdamOptimizer_value = tf.train.AdamOptimizer(1e-4)
+train_step_value = AdamOptimizer_value.minimize(error_metric_value)
 
 
-# W_conv2 = weight_variable([2,2,5,10])
-# b_conv2 = bias_variable([10])
+"""
+POLICY NETWORK VARIABLES
+All variables used for the policy network, including outputs.
+Note that the optimizers don't have names, for either.
 
-# h_conv2 = tf.nn.relu(conv2d(h_conv1, W_conv2) + b_conv2)
+These should all end in the word 'policy'.
+
+The problem is you don't want too much compression, because then you lose out
+on the ability to know what's happening where.
+
+I'll do this one with padding=same
 
 
-W_fc1 = tf.Variable(tf.random_uniform([3*3*10,1],-0.1,0.1), name=prefixize("W_fc1"))
-b_fc1 = last_row_bias([1], suffix="b_fc1")
+It's tricky that you can't compress the input too much, because you don't
+just need one number any more, but 26 (or 82, etc.) numbers. So, maybe
+I should have padding='SAME' for the parts of the policy network that are 
+not the first layer. OR/ALSO, I can just have a more complex fully-connected
+part.
 
-h_conv1_flat = tf.reshape(h_conv1, [-1, 3*3*10], name=prefixize("h_conv1_flat"))
-y_conv = tf.nn.tanh(tf.matmul(h_conv1_flat, W_fc1) + b_fc1, name=prefixize("y_conv"))
+"""
 
-# W_fc3 = weight_variable([128, 1])
-# b_fc3 = bias_variable([1])
 
-# h_fc3
 
-# cross_entropy = -tf.reduce_sum(y_ * tf.log(y_conv), reduction_indices=[1])
-cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y_conv), reduction_indices=[1]), name=prefixize("cross_entropy"))
-mean_square = tf.reduce_mean(tf.reduce_sum((y_ - y_conv)**2, reduction_indices=[1]), name=prefixize("mean_square"))
+W_conv1_policy = weight_variable([3,3,1,20], suffix="W_conv1_policy")
+b_conv1_policy = bias_variable([20], suffix="b_conv1_policy")
 
-error_metric = mean_square
+x_image_policy = tf.reshape(x_policy, [-1,BOARD_SIZE,BOARD_SIZE,1], name=prefixize("x_image_policy"))
 
-# AdamOptimizer = tf.train.AdamOptimizer(1e-4, name=prefixize("Adam_Optimizer"))
-# train_step = AdamOptimizer.minimize(error_metric, name=prefixize("train_step"))
+h_conv1_policy = tf.nn.relu(conv2d(x_image_policy, W_conv1_policy, padding="SAME") + b_conv1_policy, name=prefixize("h_conv1_policy"))
 
-AdamOptimizer = tf.train.AdamOptimizer(1e-4)
-train_step = AdamOptimizer.minimize(error_metric)
+W_conv2_policy = weight_variable([3,3,20,20], suffix="W_conv2_policy")
+b_conv2_policy = bias_variable([20], suffix="b_conv2_policy")
+h_conv2_policy = tf.nn.relu(conv2d(h_conv1_policy, W_conv2_policy, padding="SAME") + b_conv2_policy, name=prefixize("h_conv2_policy"))
+
+
+
+W_fc1_policy = tf.Variable(tf.random_uniform([5*5*20, 128],-0.1,0.1), name=prefixize("W_fc1_policy"))
+b_fc1_policy = last_row_bias([128], suffix="b_fc1_policy")
+
+h_conv2_flat_policy = tf.reshape(h_conv2_policy, [-1, 5*5*20], name=prefixize("h_conv2_flat_policy"))
+h_fc1_policy = tf.nn.relu(tf.matmul(h_conv2_flat_policy, W_fc1_policy) + b_fc1_policy, name="h_fc1_policy")
+
+W_fc2_policy = tf.Variable(tf.random_uniform([128, (BOARD_SIZE*BOARD_SIZE + 1)],-0.1,0.1), name=prefixize("W_fc2_policy"))
+b_fc2_policy = last_row_bias([BOARD_SIZE*BOARD_SIZE + 1], suffix="b_fc1_policy")
+
+softmax_input_policy = tf.matmul(h_fc1_policy,W_fc2_policy) + b_fc2_policy
+softmax_output_policy = softmax_with_temp(softmax_input_policy, softmax_temperature_policy, suffix="softmax_output_policy")
+
+
+cross_entropy_policy = tf.reduce_mean(-tf.reduce_sum(moves_ * tf.log(softmax_output_policy), reduction_indices=[1]), name=prefixize("cross_entropy_policy"))
+
+error_metric_policy = cross_entropy_policy
+
+AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
+train_step_policy = AdamOptimizer_policy.minimize(error_metric_policy)
+
+
+# y_conv_policy = tf.nn.tanh(tf.matmul(h_conv2_flat_policy, W_fc1_policy) + b_fc1_policy, name=prefixize("y_conv_policy"))
+
+# cross_entropy_policy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y_conv_policy), reduction_indices=[1]), name=prefixize("cross_entropy_policy"))
+# mean_square_policy = tf.reduce_mean(tf.reduce_sum((y_ - y_conv_policy)**2, reduction_indices=[1]), name=prefixize("mean_square_policy"))
+
+# error_metric_policy = mean_square_policy
+
+# AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
+# train_step_policy = AdamOptimizer_policy.minimize(error_metric_policy)
+
+
+
+
+
+
 
 # train_step = tf.train.AdamOptimizer(1e-4).minimize(error_metric, name=prefixize("train_step"))
 
@@ -114,6 +222,7 @@ if TRAIN_OR_TEST == "TRAIN":
   relavent_variables = all_variables
 elif TRAIN_OR_TEST == "TEST":
   relavent_variables = [v for v in all_variables if (type(v.name) is unicode) and (v.name.startswith(NAME_PREFIX))]
+  print([v.name for v in relavent_variables])
 else:
   raise Exception("TRAIN_OR_TEST must be TRAIN or TEST. Duh.")
   # relavent_variables = [v for v in all_variables if (type(v.name) is unicode) and (v.name.startswith(NAME_PREFIX))]
@@ -183,7 +292,7 @@ class Convbot_FIVE_POLICY(GoBot):
     # That makes it a little bit confusing, but it also is the only way that
     # makes sense. Plus, as long as I'm consistent, I think I'm fine.
     flattened = board_matrix.reshape((1,BOARD_SIZE*BOARD_SIZE))
-    results = sess.run(y_conv, feed_dict={
+    results = sess.run(y_conv_value, feed_dict={
         x : flattened
     })
     return results[0]
@@ -332,7 +441,7 @@ class Convbot_FIVE_POLICY(GoBot):
     print(target_outputs)
 
     print("About to train")
-    sess.run(train_step, feed_dict={
+    sess.run(train_step_value, feed_dict={
       x : inputs, 
       y_ : target_outputs
     })
@@ -349,7 +458,7 @@ class Convbot_FIVE_POLICY(GoBot):
 
 
   def evaluate_boards(self, board_matrices):
-    results = sess.run(y_conv, feed_dict={
+    results = sess.run(y_conv_value, feed_dict={
         x : board_matrices
       })
     return results
@@ -391,7 +500,6 @@ class Convbot_FIVE_POLICY(GoBot):
     and output the move with the highest score.
     If current_turn==-1, then you flip the board, simulate one move ahead as
     if you are black, and output the move with the highest score (e.g. the
-    highest chance of FAKE BLACK, AKA WHITE, winning).
 
     Similar to the old one, but the flipping happens at a more easy-to-reason
     place.
@@ -417,8 +525,68 @@ class Convbot_FIVE_POLICY(GoBot):
     return best_value_move_pair[1]
 
 
+  def from_board_to_on_policy_move(self, board_matrix, temperature, previous_board):
+    """
+    This is the thing I describe below.
+    As always, we want to always be looking at the board from BLACK's
+    perspective. Right?
+    """
+    board_input = self.board_to_input_transform(board_matrix)
+    output_probs = sess.run(softmax_output_policy, feed_dict={
+      x_policy : board_input,
+      softmax_temperature_policy : temperature
+    })
+    legal_moves = np.zeros(BOARD_SIZE*BOARD_SIZE + 1, dtype=np.float32)
+    for i in xrange(BOARD_SIZE*BOARD_SIZE):
+      tup = ( i // BOARD_SIZE, i % BOARD_SIZE ) ##NOTE THIS COULD BE BACKWARDS.
+      # But now I think it's right.
+      if util.move_is_valid(board_matrix, tup, 1, previous_board):
+        legal_moves[i] = 1.0
+      else:
+        continue
+    legal_moves[-1] = 1.0 # This is because None is always a valid move.
+
+    only_legal_probs = output_probs * legal_moves
+    normalized_legal_probs = only_legal_probs / np.sum(only_legal_probs)
+    random_number = random.random()
+    prob_sum = 0.0
+    desired_index = -1
+    for i in xrange(len(normalized_legal_probs)):
+      prob_sum += normalized_legal_probs[i]
+      if prob_sum >= random_number:
+        desired_index = i
+        break
+
+    if desired_index == -1:
+      print(normalized_legal_probs)
+      print(prob_sum)
+      raise Exception("for some reason, prob_sum did not catch random_number")
+
+    if desired_index = BOARD_SIZE*BOARD_SIZE:
+      return None
+    else:
+      tup = ( i // BOARD_SIZE, i % BOARD_SIZE )
+      return tup
+    
+
+
 
   def generate_board_from_n_on_policy_moves(self, n):
+    """
+    The tricky thing here is always picking legal moves. I think that the
+    legal moves should be an input feature to the policy. Maybe to the value
+    network as well, I'm not sure. Why not I guess.
+    So you use it as an input to the policy network.
+    And then you get all of the probabilities from the temperature-softmax. 
+    Then you multiply that by a mask of legal moves. And then you re-normalize
+    by dividing by the new sum. And then, you generate a random number between
+    0 and 1, and iterate through the array, keeping a sum, until you get a 
+    probability larger than your random number. Then, you go from that index
+    to a move, by doing (i mod BOARD_SIZE, i // BOARD_SIZE) (or the inverse), or
+    if it's the last one, NONE.
+    Then you make the move.
+    But remember, the policy is ALWAYS asking about a move that is BLACK's turn.
+    """
     
     previous_board = np.zeros((BOARD_SIZE,BOARD_SIZE)) 
     current_board = np.zeros((BOARD_SIZE,BOARD_SIZE))
@@ -427,7 +595,8 @@ class Convbot_FIVE_POLICY(GoBot):
     moves = []
     for i in xrange(n):
       # if (len(moves) >=2) and 
-      best_move = self.get_best_move(current_board, previous_board, current_turn)
+      probabilistic_move = self.from_board_to_on_policy_move()
+      # best_move = self.get_best_move(current_board, previous_board, current_turn)
       previous_board = current_board
       current_board = util.update_board_from_move(current_board, best_move, current_turn)
 
@@ -436,7 +605,19 @@ class Convbot_FIVE_POLICY(GoBot):
       continue
 
     return
-    pass
+
+
+  def board_to_input_transform(self, board_matrix):
+    """
+    I should get this ready for features, but I really don't want to.
+    """
+    flattened = board_matrix.reshape((1, BOARD_SIZE*BOARD_SIZE))
+    return flattened
+
+
+  def multiple_boards_to_input_transform(self, board_matrices):
+    mapped = map(self.board_to_input_transform, board_matrices)
+    return np.asarray(mapped)
 
 
 
@@ -634,7 +815,7 @@ class Convbot_FIVE_POLICY(GoBot):
 
     print("about to train")
     for i in range(3): #just silly and arbitrary
-      sess.run(train_step, feed_dict={
+      sess.run(train_step_value, feed_dict={
         x : boards,
         y_ : y_goal
       })

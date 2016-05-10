@@ -149,4 +149,14 @@ it's going to start working again
 I really can't get past this problem with the AdamOptimizer. It seems like a big design problem. On the other hand, it's WAY better for convergance, especially when I'm going to have policy gradient stuff. Honestly, I'm lost.
 
 
+### SOMETHING INTERESTING
+When I use the value network, I'm always asking the board where white is about to go. The reason this is true is, I only care about black, and I use the value network after I have tried every valid move. So, black goes and I evaluate how likely black is to win, given that white is about to move.
+On the other hand, the policy network also helps black make moves. So the policy network always assumes that it's about to be BLACK's turn, and then you do a move that is most likely to help BLACK. So, they sort of operate on different boards.
+
+After you play a game out, you get true end values. You then use those values as energies, then pass them through a softmax, and then update the POLICY network based on this softmax. 
+
+Two things I could play with: first, I could use either the estimated board-values before the update or after. Second, I could use a slightly lower temperature for the update to the POLICY network.
+
+
+
 
