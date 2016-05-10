@@ -621,9 +621,9 @@ def determine_winner(current_board, handicap=0.5):
   if scores['pos'] == scores['neg']:
     return 0
   elif scores['pos'] > scores['neg']:
-    return 1
+    return 1.0
   else:
-    return -1
+    return -1.0
 
 
 

@@ -40,6 +40,8 @@ GLOBAL_TEMPERATURE = 2.0 #Since values range from -1 to 1,
             # because at the beginning that means it will lead to spots
             # that have a lot of good moves following them. Nice.
 
+NUM_POLICY_GAMES_TO_SIMULATE_PER_BOARD = 10
+
 
 
 def prefixize(suffix):
@@ -88,12 +90,6 @@ def softmax_with_temp(softmax_input, temperature, suffix):
   return softmax
 
 
-
-# def conv2d_skip(x,W):
-#   return tf.nn.conv2d(x,W,strides=[1,2,2,1],padding='SAME')
-
-# def max_pool_2x2(x):
-#   return tf.nn.max_pool(x, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
 
 """
@@ -304,7 +300,12 @@ class Convbot_FIVE_POLICY(GoBot):
     })
     return results[0]
 
-  # def train_on_random_board(self, num_moves):
+  def evaluate_boards(self, board_matrices):
+    results = sess.run(y_conv_value, feed_dict={
+        x : board_matrices
+      })
+    return results
+
 
 
   def get_on_policy_result_for_random_board(self, num_moves):
@@ -378,7 +379,7 @@ class Convbot_FIVE_POLICY(GoBot):
       raise Exception("Should never get here!")
 
     flattened_board = simulator_input_board.reshape((1,BOARD_SIZE*BOARD_SIZE))
-    simulated_board_conclusion = self.get_results_of_board(
+    simulated_board_conclusion = self.get_results_of_board_on_policy(
       simulator_input_board, np.zeros((BOARD_SIZE,BOARD_SIZE)), -1
     )
     if simulated_board_conclusion is None:
@@ -409,7 +410,7 @@ class Convbot_FIVE_POLICY(GoBot):
     # flattened_board = board_to_score.reshape((1,81))
 
     # # estimate_board_value = self.evaluate_board(board_to_evaluate)
-    # boards_natural_conclusion = self.get_results_of_board(copy(random_board),
+    # boards_natural_conclusion = self.get_results_of_board_on_policy(copy(random_board),
     #                                           np.zeros((9,9)), next_turn, [])
     # true_winner = util.determine_winner(boards_natural_conclusion)
     # winner_np = np.asarray([[true_winner]])
@@ -455,48 +456,6 @@ class Convbot_FIVE_POLICY(GoBot):
     print("Trained.")
     return
 
-
-
-
-
-
-
-
-
-
-  def evaluate_boards(self, board_matrices):
-    results = sess.run(y_conv_value, feed_dict={
-        x : board_matrices
-      })
-    return results
-
-  # def OLD_get_best_move(self, board_matrix, previous_board, current_turn):
-  #   # print("Simulating turn...")
-  #   valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, current_turn))
-    
-  #   if len(valid_moves) == 0:
-  #     return None
-
-  #   new_boards = [util.update_board_from_move(board_matrix, move, current_turn) for move in valid_moves]
-  #   valid_moves.append(None)
-  #   new_boards.append(copy(board_matrix))
-
-
-
-  #   if current_turn == -1:
-  #     new_boards = [(-1 * board) for board in new_boards]
-
-  #   value_of_new_boards = [self.evaluate_board(b) for b in new_boards]
-
-  #   value_move_pairs = zip(value_of_new_boards, valid_moves)
-  #   # print(value_move_pairs)
-  #   # value_move_pairs = sorted(value_move_pairs)
-  #   best_value_move_pair = max(value_move_pairs)
-  #   # print(best_value_move_pair)
-
-  #   # print("\n\n\ngetting best move from convnet")
-
-  #   return best_value_move_pair[1]
 
 
 
@@ -584,7 +543,6 @@ class Convbot_FIVE_POLICY(GoBot):
       return tup
     
 
-
   def generate_board_from_n_on_policy_moves(self, n):
     """
     Returns: A board, and the person who should move next.
@@ -647,8 +605,7 @@ class Convbot_FIVE_POLICY(GoBot):
 
 
 
-
-  def get_result_of_board_from_random_policy(self, board_matrix, previous_board, current_turn, move_list=None):
+  def get_results_of_board_on_policy(self, board_matrix, previous_board, current_turn, move_list=None):
     if move_list is None and util.boards_are_equal(board_matrix, previous_board):
       move_list = [None]
     if move_list is None:
@@ -659,129 +616,82 @@ class Convbot_FIVE_POLICY(GoBot):
       if len(move_list) > 300:
         print("simulation lasted more than 300 moves")
         return None
-      # valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, current_turn))
-      valid_move = util.output_one_valid_move(board_matrix, previous_board, current_turn)
       # best_move = self.get_best_move(board_matrix, previous_board, current_turn)
-      if valid_move is None:
+      on_policy_move = self.from_board_to_on_policy_move(board_matrix, GLOBAL_TEMPERATURE, previous_board, current_turn):
+      if on_policy_move is None:
         new_board = copy(board_matrix)
       else:
-        new_board = util.update_board_from_move(board_matrix, valid_move, current_turn)
-      move_list.append(valid_move)
+        new_board = util.update_board_from_move(board_matrix, on_policy_move, current_turn)
+      move_list.append(on_policy_move)
       previous_board = board_matrix
       board_matrix = new_board
       current_turn *= -1
 
     return copy(board_matrix)
 
+  def get_outcome_of_board_on_policy(self, board_matrix, previous_board, current_turn, move_list=None):
+    """
+    How am I going to use this? 
+    I'm going to simulate out to some point, then I'm going to try every move, then
+    I'm going to ask how it turns out a bunch of times, then I'm going to average those
+    results together, then I'm going to update the value function, then I'm going to
+    use the value function to update the policy function.
 
-  def get_results_of_board(self, board_matrix, previous_board, current_turn, move_list=None):
-    if move_list is None and util.boards_are_equal(board_matrix, previous_board):
-      move_list = [None]
-    if move_list is None:
-      move_list=[]
+    So, if you ask me about a board, it's going to be assuming the current turn is BLACK.
+    But after you take each move from BLACK, you'll be asking this when it's white's
+    turn. So, you should just return the honest answer, because that's what it's looking for.
+    Did White, or Black, win?
 
-    while not ((len(move_list) >= 2) and (move_list[-1] is None) and (move_list[-2] is None)):
-      # print ("move: " + str(len(move_list)))
-      if len(move_list) > 300:
-        print("simulation lasted more than 300 moves")
-        return None
-      best_move = self.get_best_move(board_matrix, previous_board, current_turn)
-      if best_move is None:
-        best_new_board = copy(board_matrix)
-      else:
-        best_new_board = util.update_board_from_move(board_matrix, best_move, current_turn)
-      move_list.append(best_move)
-      previous_board = board_matrix
-      board_matrix = best_new_board
-      current_turn *= -1
+    HOW MANY SHOULD I AVERAGE TOGETHER?!?!?! I SHOULD DEFINE A CONSTANT.
 
-    return copy(board_matrix)
+    """
+    result_of_board = self.get_results_of_board_on_policy(board_matrix, previous_board, current_turn, move_list)
+    if result_of_board is None:
+      return None
+    winner_of_game = util.determine_winner(result_of_board)
+    return winner_of_game ##Winner of game is -1 or 1, or MAYBE 0.
+
+  def get_average_result_of_board_on_policy(self, board_matrix, previous_board, current_turn, move_list=None):
+
+    """
+    Uses the above function, calls it NUM_POLICY_GAMES_TO_SIMULATE_PER_BOARD 
+    times, and spits out average.
+    """
+
+    results_array = [self.get_outcome_of_board_on_policy(board_matrix, previous_board, current_turn, move_list)
+                      for i in xrange(NUM_POLICY_GAMES_TO_SIMULATE_PER_BOARD)]
+    results_array = [r in results_array if r is not None]
+    
+    if len(results_array) == 0:
+      return 0
+    average_result = sum(results_array) / len(results_array)
+    return average_result
 
 
-    # best_move = self.get_best_move(board_matrix, previous_board, current_turn)
 
-    # if best_move is None:
-    #   best_new_board = copy(board_matrix)
-    # else:
-    #   best_new_board = util.update_board_from_move(board_matrix, best_move, current_turn)
-
-    # move_list.append(best_move)
-
-    # return self.get_results_of_board(best_new_board, board_matrix, current_turn*-1, move_list)
 
 
 
   def gather_all_possible_results(self, board_input, previous_board, current_turn):
-    """
-    Shit, is this wrong too? I should switch it beforehand, just to be safe.
-    
-    To judge a board, I ALWAYS need to make sure it's white's turn.
-    So I make the initial one BLACK's turn, then simulate one move in the future,
-    and then 
-
-    BIG CHANGE! I'M GOING TO SWITCH TO DOING RANDOM SIMULATIONS AFTER
-    I MAKE A DETERMINISTIC MOVE. THAT WAY I CAN BETTER EXPLORE THE STATE SPACE.
-
-
-    """
-    print("gathering results")
-
+    print('gathering results')
     if current_turn == -1:
       board_input = -1 * board_input
     if (current_turn == -1) and (previous_board is not None):
       previous_board = -1 * previous_board
 
     valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
+    board_value_pair_list = []
+    for move in valid_moves:
+      resulting_board = util.update_board_from_move(board_input, move, 1)
+      board_value = self.get_average_result_of_board_on_policy(resulting_board, board_input, -1, [move])
+      # This should be using -1 because we're playing from the other guy now.
+      board_value_pair_list.append((board_value, resulting_board))
 
-    resulting_boards = [util.update_board_from_move(board_input, move, 1) for move in valid_moves]
-    zipped = zip(valid_moves, resulting_boards)
-    # end_results_of_boards = [self.get_results_of_board(new_board, board_input, -1, [move])
-    #           for (move, new_board) in zipped] #this is -1, because it is next turn.
-
-    
-
-
-    end_results_of_boards = [self.get_result_of_board_from_random_policy(new_board, board_input, -1, [move])
-              for (move, new_board) in zipped] #this is -1, because it is next turn.          
-    
+    return board_value_pair_list
 
 
-    
-    print("all boards simulated")
-
-    boards_before_and_after = zip(resulting_boards, end_results_of_boards)
-    # Filter it to get rid of nones.
-    boards_before_and_after = [(before, after) for (before, after) in boards_before_and_after
-                                  if (before is not None) and (after is not None)]
-
-    boards_before = [before for (before, after) in boards_before_and_after] #filtered
-    boards_after = [after for (before, after) in boards_before_and_after] #filtered
-
-    true_value_of_boards = [util.determine_winner(board) for board in boards_after]
-    # returning true values with all moves one after input.
-    return zip(true_value_of_boards, boards_before)
-
-
-    # values_and_boards = [(util.determine_winner(after), before)]                              
-    
-
-    # true_value_of_boards = [util.determine_winner(board) for board in end_results_of_boards]
-    # return zipped(true_value_of_boards, resulting_boards)
-
-
-
-
-
-    return
-
-    # valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, current_turn))
-    # resulting_boards = [util.update_board_from_move(board_matrix, move, current_turn) for move in valid_moves]
-    # zipped = zip(valid_moves, resulting_boards)
-    # end_results_of_boards = [self.get_results_of_board(new_board, board_input, (-1*current_turn), [move])
-    #           for (move, new_board) in zipped]
-    # true_value_of_boards = [util.determine_winner(board) for board in end_results_of_boards]
-    # print("results gathered")
-    # return zipped(true_value_of_boards, resulting_boards)
+  def train_policy_and_value_from_input(self, board_input, current_turn):
+    pass
 
 
   def train_from_input_board(self, board_input, current_turn):
@@ -883,13 +793,6 @@ class Convbot_FIVE_POLICY(GoBot):
 
 
 
-
-
-
-
-
-
-
 def train_convbot_on_randoms(batch_num=0):
 
   load_path = None
@@ -975,7 +878,7 @@ if __name__ == '__main__':
   # print(b_c.evaluate_boards(starting_boards))
   # # print(b_c.evaluate_boards(starting_boards))
   # starting_board = np.zeros((9,9))
-  # result = b_c.get_results_of_board(starting_board, starting_board, 1, [])
+  # result = b_c.get_results_of_board_on_policy(starting_board, starting_board, 1, [])
 
   # print("\n\n\n results:\n")
   # print(result)
