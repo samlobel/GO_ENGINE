@@ -148,6 +148,13 @@ it's going to start working again
 
 I really can't get past this problem with the AdamOptimizer. It seems like a big design problem. On the other hand, it's WAY better for convergance, especially when I'm going to have policy gradient stuff. Honestly, I'm lost.
 
+##### SOLVED!
+The AdamOptimizer is tough because you can't namespace the internal variables. But, you don't need to use the optimizer for playing, only training. And the 
+training only happens against itself anyways. So, I have a TEST_OR_TRAIN
+flag. When I want to use the GUI, I set it to TEST, and it doesn't load the
+optimizer, and everything else is namespaced. All good baby.
+
+
 
 ### SOMETHING INTERESTING
 When I use the value network, I'm always asking the board where white is about to go. The reason this is true is, I only care about black, and I use the value network after I have tried every valid move. So, black goes and I evaluate how likely black is to win, given that white is about to move.
@@ -156,6 +163,12 @@ On the other hand, the policy network also helps black make moves. So the policy
 After you play a game out, you get true end values. You then use those values as energies, then pass them through a softmax, and then update the POLICY network based on this softmax. 
 
 Two things I could play with: first, I could use either the estimated board-values before the update or after. Second, I could use a slightly lower temperature for the update to the POLICY network.
+
+
+### Why what I'm going to do will work.
+The value function updates based on the policy. It says, "if I play decently
+well from here, how likely is it that I'll win?" Then, it gets better and better valuations of boards. The policy function is a way of playing well. You make it play better by matching the value function as well as possible.
+As we train, we make the policy tighter and tighter against the value. Nice.
 
 
 

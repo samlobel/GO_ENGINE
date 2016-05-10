@@ -33,6 +33,13 @@ NUM_FEATURES = 1
 MAX_TO_KEEP = 100
 KEEP_CHECKPOINT_EVERY_N_HOURS = 0.0167
 
+GLOBAL_TEMPERATURE = 2.0 #Since values range from -1 to 1,
+            # passing this through softmax will give the
+            # difference between best and worst as 2.7 times as likely.
+            # That's a pretty damn high temperature. But, it's good,
+            # because at the beginning that means it will lead to spots
+            # that have a lot of good moves following them. Nice.
+
 
 
 def prefixize(suffix):
@@ -525,12 +532,20 @@ class Convbot_FIVE_POLICY(GoBot):
     return best_value_move_pair[1]
 
 
-  def from_board_to_on_policy_move(self, board_matrix, temperature, previous_board):
+  def from_board_to_on_policy_move(self, board_matrix, temperature, previous_board, current_turn):
     """
     This is the thing I describe below.
     As always, we want to always be looking at the board from BLACK's
     perspective. Right?
     """
+    if (board_matrix is None) or (temperature is None) or not (current_turn in (-1,1)):
+      raise Exception("Invalid inputs to from_board_to_on_policy_move.")
+    
+    if current_turn == -1:
+      board_matrix = -1 * board_matrix
+    if (current_turn == -1) and (previous_board is not None):
+      previous_board = -1 * previous_board
+
     board_input = self.board_to_input_transform(board_matrix)
     output_probs = sess.run(softmax_output_policy, feed_dict={
       x_policy : board_input,
@@ -570,9 +585,11 @@ class Convbot_FIVE_POLICY(GoBot):
     
 
 
-
   def generate_board_from_n_on_policy_moves(self, n):
     """
+    Returns: A board, and the person who should move next.
+    Retuns None, None if the game reached its conclusion while simulating.
+
     The tricky thing here is always picking legal moves. I think that the
     legal moves should be an input feature to the policy. Maybe to the value
     network as well, I'm not sure. Why not I guess.
@@ -587,24 +604,32 @@ class Convbot_FIVE_POLICY(GoBot):
     Then you make the move.
     But remember, the policy is ALWAYS asking about a move that is BLACK's turn.
     """
+    print("board size: " + str(BOARD_SIZE))
     
-    previous_board = np.zeros((BOARD_SIZE,BOARD_SIZE)) 
+    current_turn = 1
+    previous_board = np.zeros((BOARD_SIZE,BOARD_SIZE))
     current_board = np.zeros((BOARD_SIZE,BOARD_SIZE))
 
-    current_turn = 1
     moves = []
     for i in xrange(n):
-      # if (len(moves) >=2) and 
-      probabilistic_move = self.from_board_to_on_policy_move()
+      if (len(moves) >=2) and (moves[-1] is None) and (moves[-2] is None):
+        # The board hit the end of the game!
+        return None, None
+
       # best_move = self.get_best_move(current_board, previous_board, current_turn)
+      probabilistic_next_move = self.from_board_to_on_policy_move(current_board, GLOBAL_TEMPERATURE, previous_board, current_turn)
+
+      if not util.move_is_valid(current_board, probabilistic_next_move, current_turn, previous_board):
+        raise Exception("Move is not valid! How did this get passed through!")
+      else:
+        print("Just here for testing purposes, slows things down a lot. Take out when tested.")
+
+      next_board = util.update_board_from_move(current_board, probabilistic_next_move, current_turn)
       previous_board = current_board
-      current_board = util.update_board_from_move(current_board, best_move, current_turn)
+      current_board = next_board
+      current_turn = -1 * current_turn
 
-
-
-      continue
-
-    return
+    return current_board, current_turn
 
 
   def board_to_input_transform(self, board_matrix):
@@ -684,9 +709,6 @@ class Convbot_FIVE_POLICY(GoBot):
 
     # return self.get_results_of_board(best_new_board, board_matrix, current_turn*-1, move_list)
 
-
-  def generate_on_policy_after_n_moves(self, num_moves):
-    pass
 
 
   def gather_all_possible_results(self, board_input, previous_board, current_turn):
