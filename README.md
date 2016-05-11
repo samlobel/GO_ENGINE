@@ -170,6 +170,6 @@ The value function updates based on the policy. It says, "if I play decently
 well from here, how likely is it that I'll win?" Then, it gets better and better valuations of boards. The policy function is a way of playing well. You make it play better by matching the value function as well as possible.
 As we train, we make the policy tighter and tighter against the value. Nice.
 
-
+I should make an intitial training function that learns what is a legal move and what isnt. This is sort of like learnign the policy with a very high temperature. This shouldn't be too hard, because the training data is very quick to produce, so I could do it in large batches.
 
 

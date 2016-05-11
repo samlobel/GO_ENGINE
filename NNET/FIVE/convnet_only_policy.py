@@ -21,7 +21,7 @@ TRAIN_OR_TEST = "TRAIN"
 # TRAIN_OR_TEST = "TRAIN"
 
 
-NAME_PREFIX='fivebot_feat_pol_'
+NAME_PREFIX='fivebot_only_policy_'
 
 BOARD_SIZE = 5
 
@@ -154,12 +154,12 @@ the computed_values_for_moves goes into a softmax to create the target
 output for the policy network.
 """
 
-x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES], name=prefixize('x_value'))
+# x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES], name=prefixize('x_value'))
 
 x_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES], name=prefixize('x_policy'))
 softmax_temperature_policy = tf.placeholder(tf.float32, [], name=prefixize('softmax_temperature_policy'))
 
-y_ = tf.placeholder(tf.float32, [None, 1], name=prefixize("y_"))
+# y_ = tf.placeholder(tf.float32, [None, 1], name=prefixize("y_"))
 
 computed_values_for_moves = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('computed_values_for_moves'))
 
