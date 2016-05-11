@@ -694,21 +694,21 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     # print('\n\n\n')
 
 
-    softmax_policy = sess.run(softmax_output_policy, feed_dict={
-      x_policy : board_input,
-      computed_values_for_moves : value_list,
-      softmax_temperature_policy : GLOBAL_TEMPERATURE 
-    })
+    # softmax_policy = sess.run(softmax_output_policy, feed_dict={
+    #   x_policy : board_input,
+    #   computed_values_for_moves : value_list,
+    #   softmax_temperature_policy : GLOBAL_TEMPERATURE 
+    # })
 
-    softmax_target_policy = sess.run(softmax_of_target_policy, feed_dict={
-      x_policy : board_input,
-      computed_values_for_moves : value_list,
-      softmax_temperature_policy : GLOBAL_TEMPERATURE 
-    })
+    # softmax_target_policy = sess.run(softmax_of_target_policy, feed_dict={
+    #   x_policy : board_input,
+    #   computed_values_for_moves : value_list,
+    #   softmax_temperature_policy : GLOBAL_TEMPERATURE 
+    # })
 
-    print("goal and target for policy printing now.")
-    print(softmax_policy)
-    print(softmax_target_policy)
+    # print("goal and target for policy printing now.")
+    # print(softmax_policy)
+    # print(softmax_target_policy)
     
     # print("softmax_policy printing now: ")
     # print(softmax_policy)
