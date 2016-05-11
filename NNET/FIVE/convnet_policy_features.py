@@ -179,11 +179,11 @@ b_conv1_value = bias_variable([20], suffix="b_conv1_value")
 
 x_image_value = tf.reshape(x_value, [-1,BOARD_SIZE,BOARD_SIZE,NUM_FEATURES], name=prefixize("x_image_value"))
 
-h_conv1_value = tf.nn.relu(conv2d(x_image_value, W_conv1_value, padding="VALID") + b_conv1_value, name=prefixize("h_conv1_value"))
+h_conv1_value = tf.nn.elu(conv2d(x_image_value, W_conv1_value, padding="VALID") + b_conv1_value, name=prefixize("h_conv1_value"))
 
 W_conv2_value = weight_variable([2,2,20,20], suffix="W_conv2_value")
 b_conv2_value = bias_variable([20], suffix="b_conv2_value")
-h_conv2_value = tf.nn.relu(conv2d(h_conv1_value, W_conv2_value, padding="VALID") + b_conv2_value, name=prefixize("h_conv2_value"))
+h_conv2_value = tf.nn.elu(conv2d(h_conv1_value, W_conv2_value, padding="VALID") + b_conv2_value, name=prefixize("h_conv2_value"))
 
 W_fc1_value = tf.Variable(tf.random_uniform([2*2*20,1],-0.1,0.1), name=prefixize("W_fc1_value"))
 b_fc1_value = last_row_bias([1], suffix="b_fc1_value")
@@ -229,11 +229,11 @@ b_conv1_policy = bias_variable([20], suffix="b_conv1_policy")
 
 x_image_policy = tf.reshape(x_policy, (-1,BOARD_SIZE,BOARD_SIZE,NUM_FEATURES), name=prefixize("x_image_policy"))
 
-h_conv1_policy = tf.nn.relu(conv2d(x_image_policy, W_conv1_policy, padding="SAME") + b_conv1_policy, name=prefixize("h_conv1_policy"))
+h_conv1_policy = tf.nn.elu(conv2d(x_image_policy, W_conv1_policy, padding="SAME") + b_conv1_policy, name=prefixize("h_conv1_policy"))
 
 W_conv2_policy = weight_variable([3,3,20,20], suffix="W_conv2_policy")
 b_conv2_policy = bias_variable([20], suffix="b_conv2_policy")
-h_conv2_policy = tf.nn.relu(conv2d(h_conv1_policy, W_conv2_policy, padding="SAME") + b_conv2_policy, name=prefixize("h_conv2_policy"))
+h_conv2_policy = tf.nn.elu(conv2d(h_conv1_policy, W_conv2_policy, padding="SAME") + b_conv2_policy, name=prefixize("h_conv2_policy"))
 
 
 
@@ -241,7 +241,7 @@ W_fc1_policy = tf.Variable(tf.random_uniform([5*5*20, BOARD_SIZE*BOARD_SIZE + 1]
 b_fc1_policy = last_row_bias([BOARD_SIZE*BOARD_SIZE + 1], suffix="b_fc1_policy")
 
 h_conv2_flat_policy = tf.reshape(h_conv2_policy, [-1, 5*5*20], name=prefixize("h_conv2_flat_policy"))
-h_fc1_policy = tf.nn.relu(tf.matmul(h_conv2_flat_policy, W_fc1_policy) + b_fc1_policy, name="h_fc1_policy")
+h_fc1_policy = tf.nn.elu(tf.matmul(h_conv2_flat_policy, W_fc1_policy) + b_fc1_policy, name="h_fc1_policy")
 
 # W_fc2_policy = tf.Variable(tf.random_uniform([128, (BOARD_SIZE*BOARD_SIZE + 1)],-0.1,0.1), name=prefixize("W_fc2_policy"))
 # b_fc2_policy = last_row_bias([BOARD_SIZE*BOARD_SIZE + 1], suffix="b_fc1_policy")
@@ -281,7 +281,7 @@ saver = tf.train.Saver(var_list=relavent_variables, max_to_keep=MAX_TO_KEEP,
    keep_checkpoint_every_n_hours = KEEP_CHECKPOINT_EVERY_N_HOURS,
    name=prefixize("saver"))
 
-sess = tf.Session()
+
 
 
 
@@ -301,24 +301,25 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
   def __init__(self, load_path=None):
     GoBot.__init__(self)
     self.board_shape = (BOARD_SIZE,BOARD_SIZE)
+    self.sess = tf.Session()
     # saver = tf.train.Saver()
     # sess = tf.Session()
     self.load_path = load_path
     if load_path is None:
       init = tf.initialize_variables(relavent_variables, name=prefixize("init"))
-      sess.run(init)
+      self.sess.run(init)
       print("Initialized")
     else:
-      saver.restore(sess, load_path)
+      saver.restore(self.sess, load_path)
       # print("Loaded from path")
     
     # self.saver = saver
-    # self.sess = sess
+    # self.self.sess = self.sess
 
   def save_to_path(self, save_path=None):
     if save_path is None:
       raise Exception("Must save to specified path")
-    full_save_path = saver.save(sess, save_path)
+    full_save_path = saver.save(self.sess, save_path)
     print("Model saved to path: " + full_save_path)
 
 
@@ -333,7 +334,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     # liberty_map = util.output_liberty_map(board_matrix)
     # flattened = board_matrix.reshape((1,BOARD_SIZE*BOARD_SIZE))
     input_board = self.board_to_input_transform_value(board_matrix, previous_board)
-    input_reshaped = sess.run(x_image_value, feed_dict={
+    input_reshaped = self.sess.run(x_image_value, feed_dict={
         x_value : input_board
     })
     # print("unreshaped image:")
@@ -341,16 +342,50 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     # print("reshaped image")
     # print(input_reshaped)
     # print('\n\n\n\n\n')
-    results = sess.run(y_conv_value, feed_dict={
+    results = self.sess.run(y_conv_value, feed_dict={
         x_value : input_board
     })
     return results[0]
 
   # def evaluate_boards(self, board_matrices):
-  #   results = sess.run(y_conv_value, feed_dict={
+  #   results = self.sess.run(y_conv_value, feed_dict={
   #       x_value : board_matrices
   #     })
   #   return results
+
+  def get_best_move_policy(self, board_matrix, previous_board, current_turn):
+
+    if (board_matrix is None) or not (current_turn in (-1,1)):
+      raise Exception("Invalid inputs to from_board_to_on_policy_move.")
+    
+    if current_turn == -1:
+      board_matrix = -1 * board_matrix
+    if (current_turn == -1) and (previous_board is not None):
+      previous_board = -1 * previous_board
+
+    board_input = self.board_to_input_transform_policy(board_matrix, previous_board)
+    
+    output_probs = self.sess.run(softmax_output_policy, feed_dict={
+      x_policy : board_input,
+      softmax_temperature_policy : GLOBAL_TEMPERATURE
+    })
+
+    output_probs = output_probs[0]
+
+    legal_moves = np.zeros(BOARD_SIZE*BOARD_SIZE + 1, dtype=np.float32)
+    for i in xrange(BOARD_SIZE*BOARD_SIZE+1):
+      move = from_index_to_move_tuple(i) #This should include None.
+      if util.move_is_valid(board_matrix, move, 1, previous_board):
+        legal_moves[i] = 1.0
+      else:
+        continue
+
+    output_probs = output_probs * legal_moves
+    print(output_probs)
+
+    index_max = np.argmax(output_probs)
+    return from_index_to_move_tuple(index_max)
+
 
 
 
@@ -399,7 +434,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
     board_input = self.board_to_input_transform_policy(board_matrix, previous_board)
     
-    output_probs = sess.run(softmax_output_policy, feed_dict={
+    output_probs = self.sess.run(softmax_output_policy, feed_dict={
       x_policy : board_input,
       softmax_temperature_policy : temperature
     })
@@ -666,12 +701,12 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
 
 
-    sess.run(train_step_value, feed_dict={
+    self.sess.run(train_step_value, feed_dict={
       x_value : board_inputs,
       y_ : y_goal
     })
 
-    transformed_input = sess.run(x_image_value, feed_dict={
+    transformed_input = self.sess.run(x_image_value, feed_dict={
       x_value : board_inputs
     })
 
@@ -694,13 +729,13 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     # print('\n\n\n')
 
 
-    # softmax_policy = sess.run(softmax_output_policy, feed_dict={
+    # softmax_policy = self.sess.run(softmax_output_policy, feed_dict={
     #   x_policy : board_input,
     #   computed_values_for_moves : value_list,
     #   softmax_temperature_policy : GLOBAL_TEMPERATURE 
     # })
 
-    # softmax_target_policy = sess.run(softmax_of_target_policy, feed_dict={
+    # softmax_target_policy = self.sess.run(softmax_of_target_policy, feed_dict={
     #   x_policy : board_input,
     #   computed_values_for_moves : value_list,
     #   softmax_temperature_policy : GLOBAL_TEMPERATURE 
@@ -720,13 +755,13 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
 
 
-    sess.run(train_step_policy, feed_dict={
+    self.sess.run(train_step_policy, feed_dict={
       x_policy : board_input,
       computed_values_for_moves : value_list,
       softmax_temperature_policy : GLOBAL_TEMPERATURE 
     })
 
-    error_for_policy = sess.run(error_metric_policy, feed_dict={
+    error_for_policy = self.sess.run(error_metric_policy, feed_dict={
       x_policy : board_input,
       computed_values_for_moves : value_list,
       softmax_temperature_policy : GLOBAL_TEMPERATURE 
@@ -744,7 +779,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     self.train_policy_and_value_from_input(current_board, current_turn)
 
 
-  
+
 
 
 def train_and_save_from_n_move_board(n, batch_num=0):

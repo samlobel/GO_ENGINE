@@ -2,3 +2,4 @@ venv/*
 *.pyc
 saved_models
 .DS_STORE
+nohup.out

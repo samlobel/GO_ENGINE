@@ -18,9 +18,11 @@ from go_util import util
 # from NNET.NINE.more_basic_convnet import Very_Basic_ConvBot
 # from NNET.NINE.basic_convnet import Basic_ConvBot as Convbot
 # from NNET.NINE.better_learning_convnet import Better_Learner_ConvBot
-from NNET.FIVE.basic_convnet import Convbot_FIVE
-# from NNET.FIVE.convnet_with_features import Convbot_FIVE_FEATURES
-from NNET.FIVE.convnet_with_policy import Convbot_FIVE_POLICY
+
+
+# from NNET.FIVE.basic_convnet import Convbot_FIVE
+# from NNET.FIVE.convnet_with_policy import Convbot_FIVE_POLICY
+
 from NNET.FIVE.convnet_policy_features import Convbot_FIVE_POLICY_FEATURES
 
 from NNET.NINE.random_mover import Random_Mover
@@ -214,41 +216,17 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      # self.board_metadata['black_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_1_batch.ckpt")
-      # self.board_metadata['black_AI'] = Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_91_batch.ckpt")
-      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_100_batch.ckpt")
+      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_811_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_POLICY(load_path="../NNET/FIVE/saved_models/convnet_with_policy/trained_on_39_batch.ckpt")
-      # Convbot_FIVE_POLICY(load_path="../NNET/FIVE/saved_models/convnet_with_policy/trained_on_10_batch.ckpt")
-      # Convbot_FIVE_POLICY(load_path="../NNET/FIVE/saved_models/convnet_with_policy/trained_on_61_batch.ckpt")
       # 
-      # Convbot_FIVE_POLICY(load_path="../NNET/FIVE/saved_models/convnet_with_policy/trained_on_61_batch.ckpt")
-      # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_10_batch.ckpt")
       # Convbot_FIVE()
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_25_batch.ckpt")
-
-      # 
-
-      # 
-      
-      # Convbot_FIVE_FEATURES()
-      # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_99_batch.ckpt")
-      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
-      # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_91_batch.ckpt")
-      # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_91_batch.ckpt")
-      # Better_Learner_ConvBot('../NNET/NINE/saved_models/better_learning_convnet/trained_on_4_batch.ckpt')
-      # Better_Learner_ConvBot()
-          
-
-      # Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_1_batch.ckpt')
-      
-      # self.board_metadata['black_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_1_batch.ckpt')
-      
+                
     if self.board_metadata['white_player'] == 'AI':
-      # self.board_metadata['white_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
-      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_100_batch.ckpt")
+      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_811_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_19_batch.ckpt")
       # Convbot_FIVE_POLICY(load_path="../NNET/FIVE/saved_models/convnet_with_policy/trained_on_440_batch.ckpt")
@@ -259,24 +237,9 @@ class Board:
 
       # Convbot_FIVE_POLICY()
 
-      # 
       
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_100_batch.ckpt")
-      # Convbot_FIVE_FEATURES()
-      # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_200_batch.ckpt")
-      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
-      # Better_Learner_ConvBot('../NNET/NINE/saved_models/better_learning_convnet/trained_on_1_batch.ckpt')
-      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
-      # self.board_metadata['white_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_168_batch.ckpt')
-
-      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
-      # Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_39_batch.ckpt')
-      # self.board_metadata['white_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_7_batch.ckpt")
-      # self.board_metadata['white_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_5_batch.ckpt")
-      # self.board_metadata['white_AI'] = Very_Basic_ConvBot(load_path="../NNET/NINE/saved_models/more_basic_convnet/trained_on_10_batch.ckpt")
-      # self.board_metadata['white_AI'] = Very_Basic_ConvBot()
-      # self.board_metadata['white_AI'] = Very_Basic_ConvBot('../NNET/NINE/saved_models/more_basic_convnet/trained_on_1_batch.ckpt')
-      
+       
 
 
     self.previous_board = np.zeros((self.columns.get(), self.columns.get()), dtype=np.int)

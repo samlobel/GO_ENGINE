@@ -173,3 +173,9 @@ As we train, we make the policy tighter and tighter against the value. Nice.
 I should make an intitial training function that learns what is a legal move and what isnt. This is sort of like learnign the policy with a very high temperature. This shouldn't be too hard, because the training data is very quick to produce, so I could do it in large batches.
 
 
+scp -ri /Users/samlobel/.ssh/PEM/TensorflowEC2.pem ubuntu@ec2-54-149-232-179.us-west-2.compute.amazonaws.com:/home/ubuntu/GO_ENGINE/NNET/FIVE/saved_models ~/saved_models
+thats how I get the models over.
+
+
+It's making it way more difficult because of the whole 26 output thing. It would make it a lot easier if there was a simple rule about 'are there sensible moves'. It should be easy to code that, if a move fills an eye it's bad, and if a move is illegal it's bad as well. And that way, you never need to output None!
+
