@@ -531,7 +531,7 @@ class Convbot_FIVE_POLICY(GoBot):
     
     if len(results_array) == 0:
       return 0.0
-    average_result = sum(results_array) / len(results_array)
+    average_result = (sum(results_array) + 0.0) / len(results_array)
     # print('average_result:')
     # print(average_result)
     return average_result
