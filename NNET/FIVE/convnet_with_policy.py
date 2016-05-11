@@ -31,7 +31,7 @@ NUM_FEATURES = 1
 MAX_TO_KEEP = 5
 KEEP_CHECKPOINT_EVERY_N_HOURS = 0.033
 
-GLOBAL_TEMPERATURE = 1.0 #Since values range from -1 to 1,
+GLOBAL_TEMPERATURE = 0.66 #Since values range from -1 to 1,
             # passing this through softmax with temp "2" will give the
             # difference between best and worst as 2.7 times as likely.
             # That's a pretty damn high temperature. But, it's good,
@@ -40,7 +40,7 @@ GLOBAL_TEMPERATURE = 1.0 #Since values range from -1 to 1,
             # temp 1 gives 9.7 times likelihood.
             # temp 1.5 gives like 5 times.
 
-NUM_POLICY_GAMES_TO_SIMULATE_PER_BOARD = 3
+NUM_POLICY_GAMES_TO_SIMULATE_PER_BOARD = 5
 
 
 
@@ -369,12 +369,16 @@ class Convbot_FIVE_POLICY(GoBot):
       previous_board = -1 * previous_board
 
     board_input = self.board_to_input_transform(board_matrix)
+    
     output_probs = sess.run(softmax_output_policy, feed_dict={
       x_policy : board_input,
       softmax_temperature_policy : temperature
     })
 
     output_probs = output_probs[0]
+
+    # print("output probs: ")
+    # print(output_probs)
 
     legal_moves = np.zeros(BOARD_SIZE*BOARD_SIZE + 1, dtype=np.float32)
     for i in xrange(BOARD_SIZE*BOARD_SIZE+1):
@@ -383,9 +387,11 @@ class Convbot_FIVE_POLICY(GoBot):
         legal_moves[i] = 1.0
       else:
         continue
-
+    # print(legal_moves)
     only_legal_probs = output_probs * legal_moves
+    # print(only_legal_probs)
     normalized_legal_probs = only_legal_probs / np.sum(only_legal_probs)
+    # print(normalized_legal_probs)
     random_number = random.random()
     prob_sum = 0.0
     desired_index = -1
@@ -505,6 +511,7 @@ class Convbot_FIVE_POLICY(GoBot):
     HOW MANY SHOULD I AVERAGE TOGETHER?!?!?! I SHOULD DEFINE A CONSTANT.
 
     """
+    # print(current_turn)
     result_of_board = self.get_results_of_board_on_policy(board_matrix, previous_board, current_turn, move_list)
     if result_of_board is None:
       return None
@@ -523,8 +530,10 @@ class Convbot_FIVE_POLICY(GoBot):
     results_array = [r for r in results_array if r is not None]
     
     if len(results_array) == 0:
-      return 0
+      return 0.0
     average_result = sum(results_array) / len(results_array)
+    # print('average_result:')
+    # print(average_result)
     return average_result
 
 
@@ -538,9 +547,12 @@ class Convbot_FIVE_POLICY(GoBot):
       print("passed None to gather_all_possible_results")
       return None
     if current_turn == -1:
+      print(board_input)
       board_input = -1 * board_input
     if (current_turn == -1) and (previous_board is not None):
       previous_board = -1 * previous_board
+    if current_turn == -1:
+      print(board_input)
 
     valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
     value_board_move_list = []
@@ -581,6 +593,9 @@ class Convbot_FIVE_POLICY(GoBot):
     
     y_goal = np.asarray([value for (value, board, move) in value_board_move_list])
     boards = np.asarray([board for (value, board, move) in value_board_move_list])
+    
+    print("Result of on-policy simulation: ")
+    print(y_goal)
 
     y_goal = y_goal.reshape((-1,1))
     boards = boards.reshape((-1, BOARD_SIZE*BOARD_SIZE))
@@ -643,10 +658,14 @@ def train_and_save_from_n_move_board(n, batch_num=0):
 
 if __name__ == '__main__':
   print("training!")
-  for i in range(200, 250):
+  for i in range(300, 350):
     train_and_save_from_n_move_board((i * 7) % 20, batch_num=i)
 
   print("trained!")
+
+
+
+# I've got a flippity dippity error!!!!!
 
 
 

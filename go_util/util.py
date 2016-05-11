@@ -613,19 +613,12 @@ def determine_winner(current_board, handicap=0.5):
   scores = score_board(current_board)
   score_difference = scores['pos'] - scores['neg'] - handicap
   if score_difference > 0:
-    return 1
-  elif score_difference < 0:
-    return -1
-  else:
-    print "Warning a board should never tie."
-    return 0
-
-  if scores['pos'] == scores['neg']:
-    return 0
-  elif scores['pos'] > scores['neg']:
     return 1.0
-  else:
+  elif score_difference < 0:
     return -1.0
+  else:
+    print "Warning, a board should never tie."
+    return 0.0
 
 
 
