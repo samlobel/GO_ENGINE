@@ -17,8 +17,8 @@ import random
 
 
 
-# TRAIN_OR_TEST = "TEST"
 TRAIN_OR_TEST = "TRAIN"
+# TRAIN_OR_TEST = "TRAIN"
 
 
 NAME_PREFIX='fivebot_feat_pol_'
@@ -237,17 +237,17 @@ h_conv2_policy = tf.nn.relu(conv2d(h_conv1_policy, W_conv2_policy, padding="SAME
 
 
 
-W_fc1_policy = tf.Variable(tf.random_uniform([5*5*20, 128],-0.1,0.1), name=prefixize("W_fc1_policy"))
+W_fc1_policy = tf.Variable(tf.random_uniform([5*5*20, BOARD_SIZE*BOARD_SIZE + 1],-0.1,0.1), name=prefixize("W_fc1_policy"))
 b_fc1_policy = last_row_bias([128], suffix="b_fc1_policy")
 
 h_conv2_flat_policy = tf.reshape(h_conv2_policy, [-1, 5*5*20], name=prefixize("h_conv2_flat_policy"))
 h_fc1_policy = tf.nn.relu(tf.matmul(h_conv2_flat_policy, W_fc1_policy) + b_fc1_policy, name="h_fc1_policy")
 
-W_fc2_policy = tf.Variable(tf.random_uniform([128, (BOARD_SIZE*BOARD_SIZE + 1)],-0.1,0.1), name=prefixize("W_fc2_policy"))
-b_fc2_policy = last_row_bias([BOARD_SIZE*BOARD_SIZE + 1], suffix="b_fc1_policy")
+# W_fc2_policy = tf.Variable(tf.random_uniform([128, (BOARD_SIZE*BOARD_SIZE + 1)],-0.1,0.1), name=prefixize("W_fc2_policy"))
+# b_fc2_policy = last_row_bias([BOARD_SIZE*BOARD_SIZE + 1], suffix="b_fc1_policy")
 
-softmax_input_policy = tf.matmul(h_fc1_policy,W_fc2_policy) + b_fc2_policy
-softmax_output_policy = softmax_with_temp(softmax_input_policy, softmax_temperature_policy, suffix="softmax_output_policy")
+# softmax_input_policy = tf.matmul(h_fc1_policy,W_fc2_policy) + b_fc2_policy
+softmax_output_policy = softmax_with_temp(h_fc1_policy, softmax_temperature_policy, suffix="softmax_output_policy")
 
 
 softmax_of_target_policy = softmax_with_temp(computed_values_for_moves, softmax_temperature_policy, suffix="softmax_of_target_policy")
@@ -307,7 +307,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
       print("Initialized")
     else:
       saver.restore(sess, load_path)
-      print("Loaded from path")
+      # print("Loaded from path")
     
     # self.saver = saver
     # self.sess = sess
@@ -330,6 +330,14 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     # liberty_map = util.output_liberty_map(board_matrix)
     # flattened = board_matrix.reshape((1,BOARD_SIZE*BOARD_SIZE))
     input_board = self.board_to_input_transform_value(board_matrix, previous_board)
+    input_reshaped = sess.run(x_image_value, feed_dict={
+        x_value : input_board
+    })
+    # print("unreshaped image:")
+    # print(input_board)
+    # print("reshaped image")
+    # print(input_reshaped)
+    # print('\n\n\n\n\n')
     results = sess.run(y_conv_value, feed_dict={
         x_value : input_board
     })
@@ -447,6 +455,8 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     Then you make the move.
     But remember, the policy is ALWAYS asking about a move that is BLACK's turn.
     """
+
+    global GLOBAL_TEMPERATURE
     
     current_turn = 1
     previous_board = np.zeros((BOARD_SIZE,BOARD_SIZE))
@@ -515,6 +525,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
 
   def get_results_of_board_on_policy(self, board_matrix, previous_board, current_turn, move_list=None):
+    global GLOBAL_TEMPERATURE
     if move_list is None and util.boards_are_equal(board_matrix, previous_board):
       move_list = [None]
     if move_list is None:
@@ -627,6 +638,8 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
 
   def train_policy_and_value_from_input(self, board_input, current_turn):
+    global GLOBAL_TEMPERATURE
+
     if current_turn == -1:
       board_input = -1 * board_input
       current_turn = 1
@@ -639,11 +652,11 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     y_goal = np.asarray([value for (value, board, move) in value_board_move_list])
     boards = np.asarray([board for (value, board, move) in value_board_move_list])
     
-    print("Result of on-policy simulation: ")
-    print(y_goal)
+    # print("Result of on-policy simulation: ")
+    # print(y_goal)
 
     board_inputs = np.asarray([self.board_to_input_transform_value(b, board_input)[0] for b in boards])
-    print("SHAPE OF BOARDS: " + str(boards.shape) + ". SHAPE OF BOARD_INPUTS: " + str(board_inputs.shape))
+    # print("SHAPE OF BOARDS: " + str(boards.shape) + ". SHAPE OF BOARD_INPUTS: " + str(board_inputs.shape))
 
     y_goal = y_goal.reshape((-1,1))
     # boards = boards.reshape((-1, BOARD_SIZE*BOARD_SIZE))
@@ -655,13 +668,13 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
       y_ : y_goal
     })
     
-    print("updated value network from all resulting boards!")
+    # print("updated value network from all resulting boards!")
     value_list = self.from_value_board_move_list_to_value_list(value_board_move_list, board_input)
     # value_list = np.asarray([value_list], dtype=np.float32)
     value_list = value_list.reshape((1,BOARD_SIZE*BOARD_SIZE+1))
     # print("created true value list. Its shape is :  " + str(value_list.shape) + " . Should be 1,26")
-    print("value list and softmax_policy_output to follow: ")
-    print(value_list)
+    # print("value list and softmax_policy_output to follow: ")
+    # print(value_list)
 
     board_input = self.board_to_input_transform_policy(board_input, None)    
 
@@ -671,14 +684,24 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
       computed_values_for_moves : value_list,
       softmax_temperature_policy : GLOBAL_TEMPERATURE 
     })
-    
-    print("softmax_policy printing now: ")
-    print(softmax_policy)
 
-    print("board_input printing now: ")
-    print(board_input)
-    print(board_input.shape)
-    print("\n\n\n\n")
+    softmax_target_policy = sess.run(softmax_of_target_policy, feed_dict={
+      x_policy : board_input,
+      computed_values_for_moves : value_list,
+      softmax_temperature_policy : GLOBAL_TEMPERATURE 
+    })
+
+    print("goal and target for policy printing now.")
+    print(softmax_policy)
+    print(softmax_target_policy)
+    
+    # print("softmax_policy printing now: ")
+    # print(softmax_policy)
+
+    # print("board_input printing now: ")
+    # print(board_input)
+    # print(board_input.shape)
+    # print("\n\n\n\n")
 
 
 
@@ -702,7 +725,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
   def train_policy_and_value_from_on_policy_board_after_n_steps(self, n):
     current_board, current_turn = self.generate_board_from_n_on_policy_moves(n)
-    print("generated board.")
+    # print("generated board.")
     self.train_policy_and_value_from_input(current_board, current_turn)
 
 
@@ -718,20 +741,34 @@ def train_and_save_from_n_move_board(n, batch_num=0):
 
   c_b = Convbot_FIVE_POLICY_FEATURES(load_path=load_path)
 
-  print("training!")
+  # print("training!")
   c_b.train_policy_and_value_from_on_policy_board_after_n_steps(n)
   c_b.save_to_path(save_path)
-  print("saved!")
+  # print("saved!")
 
 
 
 
 
-# def automate_testing(initial_start):
-#   counter = 0
-#   round_num = 0
-#   temp_exponent = 0.
-#   while True:
+def automate_testing(initial_start, start_global_temp=None):
+  global GLOBAL_TEMPERATURE
+  if start_global_temp is not None:
+    print("setting global temp to " + str(start_global_temp))
+    GLOBAL_TEMPERATURE = start_global_temp
+  print("GLOBAL_TEMPERATURE starts as " + str(GLOBAL_TEMPERATURE))
+  counter = 0
+  temp_exponent = 0.9
+  start = 0
+  finish = 100
+  while True:  
+    for i in range(start, finish):
+      batch = initial_start + i + (counter*finish)
+      n = int(20 - ((i - start)*20 / (finish - start))) + (i % 2)
+      train_and_save_from_n_move_board(n, batch_num=batch)
+    counter += 1
+    GLOBAL_TEMPERATURE *= temp_exponent
+    print("Changed GLOBAL_TEMPERATURE to " + str(GLOBAL_TEMPERATURE))
+
 
 
 
@@ -739,17 +776,18 @@ def train_and_save_from_n_move_board(n, batch_num=0):
 
 
 if __name__ == '__main__':
-  print("training!")
-  start = 0
-  finish = 100
-  for i in range(start, finish):
-    # train_and_save_from_n_move_board((i * 7) % 20, batch_num=i)
-    # train backwards. I like this, it goes smoothly, but doesn't stick
-    # on one color.
-    n = int(20 - ((i - start)*20 / (finish - start))) + (i % 2)
-    train_and_save_from_n_move_board(n, batch_num=i)
+  # print("training!")
+  automate_testing(100)
+  # # start = 0
+  # # finish = 100
+  # # for i in range(start, finish):
+  # #   # train_and_save_from_n_move_board((i * 7) % 20, batch_num=i)
+  # #   # train backwards. I like this, it goes smoothly, but doesn't stick
+  # #   # on one color.
+  # #   n = int(20 - ((i - start)*20 / (finish - start))) + (i % 2)
+  # #   train_and_save_from_n_move_board(n, batch_num=i)
 
-  print("trained!")
+  # print("trained!")
 
 
 

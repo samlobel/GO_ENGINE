@@ -49,14 +49,14 @@ class Board:
     l1 = Label(self.frame, text="Black is:")
     l1.pack(side='left')
     self.black_player = StringVar(self.root)
-    self.black_player.set("HUMAN")
+    self.black_player.set("AI")
     self.black_player_dropdown = OptionMenu(self.frame, self.black_player, "HUMAN", "AI")
     self.black_player_dropdown.pack(side='left')
 
     l2 = Label(self.frame, text="White is:")    
     l2.pack(side='left')
     self.white_player = StringVar(self.root)
-    self.white_player.set("HUMAN")
+    self.white_player.set("AI")
     self.white_player_dropdown = OptionMenu(self.frame, self.white_player, "HUMAN", "AI")
     self.white_player_dropdown.pack(side='left')
 
@@ -216,7 +216,7 @@ class Board:
     if self.board_metadata['black_player'] == 'AI':
       # self.board_metadata['black_AI'] = Convbot(load_path="../NNET/NINE/saved_models/basic_convnet/trained_on_1_batch.ckpt")
       # self.board_metadata['black_AI'] = Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_91_batch.ckpt")
-      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_139_batch.ckpt")
+      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_100_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
@@ -248,7 +248,8 @@ class Board:
       
     if self.board_metadata['white_player'] == 'AI':
       # self.board_metadata['white_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
-      self.board_metadata['white_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
+      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_100_batch.ckpt")
+      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_19_batch.ckpt")
       # Convbot_FIVE_POLICY(load_path="../NNET/FIVE/saved_models/convnet_with_policy/trained_on_440_batch.ckpt")
        # Convbot_FIVE_POLICY(load_path="../NNET/FIVE/saved_models/convnet_with_policy/trained_on_440_batch.ckpt")
