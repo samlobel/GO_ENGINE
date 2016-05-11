@@ -257,7 +257,7 @@ softmax_of_target_policy = softmax_with_temp(computed_values_for_moves, softmax_
 cross_entropy_policy = tf.reduce_mean(-tf.reduce_sum(softmax_of_target_policy * tf.log(softmax_output_policy), reduction_indices=[1]), name=prefixize("cross_entropy_policy"))
 mean_square_policy = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(softmax_of_target_policy, softmax_output_policy), reduction_indices=[1]), name=prefixize("mean_square_policy"))
 
-error_metric_policy = mean_square_policy
+error_metric_policy = cross_entropy_policy
 
 # AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
 # train_step_policy = AdamOptimizer_policy.minimize(error_metric_policy)
