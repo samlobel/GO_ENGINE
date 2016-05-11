@@ -17,15 +17,15 @@ import random
 
 
 
-TRAIN_OR_TEST = "TEST"
-# TRAIN_OR_TEST = "TRAIN"
+# TRAIN_OR_TEST = "TEST"
+TRAIN_OR_TEST = "TRAIN"
 
 
-NAME_PREFIX='fivebot_policy_'
+NAME_PREFIX='fivebot_feat_pol_'
 
 BOARD_SIZE = 5
 
-NUM_FEATURES = 1
+NUM_FEATURES = 3
 
 
 MAX_TO_KEEP = 5
@@ -41,6 +41,32 @@ GLOBAL_TEMPERATURE = 0.8 #Since values range from -1 to 1,
             # temp 1.5 gives like 5 times.
 
 NUM_POLICY_GAMES_TO_SIMULATE_PER_BOARD = 5
+
+
+"""
+Let's make a list of features that will make this the most
+powerful neural network in town!
+
+First is the raw input representation, with 0 for empty, 1 for your stone,
+and -1 for their stone.
+
+Next, there's a feature layer that will be GREAT for policy network: legal
+moves. It's 0 if something is an illegal move, and a 1 if it is legal
+for the current player. Heres a question: for Value network, is it legal
+moves for the turn you're looking at or the one before? I think its the
+turn you're looking at.
+
+Then, there are the liberty layers. I think that a good idea would be 
+positive liberties if its your group, and negative liberties if its their
+group. And zero if its nobodys group.
+
+Interesting. I think the reason that they break it up the way they do is because
+linear rectifiers throw away negative numbers. That's not a bad idea.
+But, it does seeme like its silly to break the board into three features that say
+the same thing. Can't you just do that by having more hidden features? And
+wont weights be able to send it down if it needs to?
+
+"""
 
 
 
@@ -123,9 +149,9 @@ the computed_values_for_moves goes into a softmax to create the target
 output for the policy network.
 """
 
-x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE], name=prefixize('x_value'))
+x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES], name=prefixize('x_value'))
 
-x_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE], name=prefixize('x_policy'))
+x_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES], name=prefixize('x_policy'))
 softmax_temperature_policy = tf.placeholder(tf.float32, [], name=prefixize('softmax_temperature_policy'))
 
 y_ = tf.placeholder(tf.float32, [None, 1], name=prefixize("y_"))
@@ -143,7 +169,7 @@ These should all end in the word 'value'.
 
 
 
-W_conv1_value = weight_variable([3,3,1,20], suffix="W_conv1_value")
+W_conv1_value = weight_variable([3,3,NUM_FEATURES,20], suffix="W_conv1_value")
 b_conv1_value = bias_variable([20], suffix="b_conv1_value")
 
 x_image_value = tf.reshape(x_value, [-1,BOARD_SIZE,BOARD_SIZE,1], name=prefixize("x_image_value"))
@@ -261,7 +287,7 @@ you would want to go. I think that's a much better idea.
 """
 
 
-class Convbot_FIVE_POLICY(GoBot):
+class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
   def __init__(self, load_path=None):
     GoBot.__init__(self)
@@ -305,7 +331,6 @@ class Convbot_FIVE_POLICY(GoBot):
         x_value : board_matrices
       })
     return results
-
 
 
 
@@ -499,7 +524,7 @@ class Convbot_FIVE_POLICY(GoBot):
     result_of_board = self.get_results_of_board_on_policy(board_matrix, previous_board, current_turn, move_list)
     if result_of_board is None:
       return None
-    winner_of_game = util.determine_winner(result_of_board, handicap=0.0)
+    winner_of_game = util.determine_winner(result_of_board)
     return winner_of_game ##Winner of game is -1 or 1, or MAYBE 0.
 
   def get_average_result_of_board_on_policy(self, board_matrix, previous_board, current_turn, move_list=None):
@@ -623,7 +648,7 @@ def train_and_save_from_n_move_board(n, batch_num=0):
     load_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num) + '_batch.ckpt'
     save_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num+1) + '_batch.ckpt'
 
-  c_b = Convbot_FIVE_POLICY(load_path=load_path)
+  c_b = Convbot_FIVE_POLICY_FEATURES(load_path=load_path)
 
   print("training!")
   c_b.train_policy_and_value_from_on_policy_board_after_n_steps(n)
