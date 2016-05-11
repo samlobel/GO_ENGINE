@@ -486,7 +486,10 @@ def output_valid_moves_boardmap(board_matrix, previous_board, current_player):
   valid_moves = output_all_valid_moves(board_matrix, previous_board, current_player)
   boardmap = np.zeros(board_matrix.shape)
   for move in valid_moves:
-    set_value_for_spot(boardmap, move, 1)
+    if move is None:
+      continue
+    else:
+      set_value_for_spot(boardmap, move, 1)
   return boardmap
 
 

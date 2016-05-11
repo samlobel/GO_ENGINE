@@ -31,7 +31,7 @@ NUM_FEATURES = 3
 MAX_TO_KEEP = 5
 KEEP_CHECKPOINT_EVERY_N_HOURS = 0.033
 
-GLOBAL_TEMPERATURE = 0.8 #Since values range from -1 to 1,
+GLOBAL_TEMPERATURE = 2.0 #Since values range from -1 to 1,
             # passing this through softmax with temp "2" will give the
             # difference between best and worst as 2.7 times as likely.
             # That's a pretty damn high temperature. But, it's good,
@@ -65,6 +65,11 @@ linear rectifiers throw away negative numbers. That's not a bad idea.
 But, it does seeme like its silly to break the board into three features that say
 the same thing. Can't you just do that by having more hidden features? And
 wont weights be able to send it down if it needs to?
+
+
+FEATURE 1: RAW INPUT
+FEATURE 2: VALID MOVES
+FEATURE 3: LIBERTY MAP
 
 """
 
@@ -172,7 +177,7 @@ These should all end in the word 'value'.
 W_conv1_value = weight_variable([3,3,NUM_FEATURES,20], suffix="W_conv1_value")
 b_conv1_value = bias_variable([20], suffix="b_conv1_value")
 
-x_image_value = tf.reshape(x_value, [-1,BOARD_SIZE,BOARD_SIZE,1], name=prefixize("x_image_value"))
+x_image_value = tf.reshape(x_value, [-1,BOARD_SIZE,BOARD_SIZE,NUM_FEATURES], name=prefixize("x_image_value"))
 
 h_conv1_value = tf.nn.relu(conv2d(x_image_value, W_conv1_value, padding="VALID") + b_conv1_value, name=prefixize("h_conv1_value"))
 
@@ -219,10 +224,10 @@ part.
 
 
 
-W_conv1_policy = weight_variable([3,3,1,20], suffix="W_conv1_policy")
+W_conv1_policy = weight_variable([3,3,NUM_FEATURES,20], suffix="W_conv1_policy")
 b_conv1_policy = bias_variable([20], suffix="b_conv1_policy")
 
-x_image_policy = tf.reshape(x_policy, [-1,BOARD_SIZE,BOARD_SIZE,1], name=prefixize("x_image_policy"))
+x_image_policy = tf.reshape(x_policy, (-1,BOARD_SIZE,BOARD_SIZE,NUM_FEATURES), name=prefixize("x_image_policy"))
 
 h_conv1_policy = tf.nn.relu(conv2d(x_image_policy, W_conv1_policy, padding="SAME") + b_conv1_policy, name=prefixize("h_conv1_policy"))
 
@@ -250,8 +255,9 @@ softmax_of_target_policy = softmax_with_temp(computed_values_for_moves, softmax_
 
 
 cross_entropy_policy = tf.reduce_mean(-tf.reduce_sum(softmax_of_target_policy * tf.log(softmax_output_policy), reduction_indices=[1]), name=prefixize("cross_entropy_policy"))
+mean_square_policy = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(softmax_of_target_policy, softmax_output_policy), reduction_indices=[1]), name=prefixize("mean_square_policy"))
 
-error_metric_policy = cross_entropy_policy
+error_metric_policy = mean_square_policy
 
 AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
 train_step_policy = AdamOptimizer_policy.minimize(error_metric_policy)
@@ -314,23 +320,26 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
 
 
-  def evaluate_board(self, board_matrix):
+  def evaluate_board(self, board_matrix, previous_board):
     # Remember, evaluate_board is always run after a sample move. Also, it's
     # always run assuming that black just went. You need to do board*-1 if you
-    # want to run it assuming white just went.
+    # want to run it assuming white just went. So, the board I see has white going next.
     # That makes it a little bit confusing, but it also is the only way that
     # makes sense. Plus, as long as I'm consistent, I think I'm fine.
-    flattened = board_matrix.reshape((1,BOARD_SIZE*BOARD_SIZE))
+    
+    # liberty_map = util.output_liberty_map(board_matrix)
+    # flattened = board_matrix.reshape((1,BOARD_SIZE*BOARD_SIZE))
+    input_board = self.board_to_input_transform_value(board_matrix, previous_board)
     results = sess.run(y_conv_value, feed_dict={
-        x_value : flattened
+        x_value : input_board
     })
     return results[0]
 
-  def evaluate_boards(self, board_matrices):
-    results = sess.run(y_conv_value, feed_dict={
-        x_value : board_matrices
-      })
-    return results
+  # def evaluate_boards(self, board_matrices):
+  #   results = sess.run(y_conv_value, feed_dict={
+  #       x_value : board_matrices
+  #     })
+  #   return results
 
 
 
@@ -356,7 +365,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
     new_boards = [util.update_board_from_move(board_matrix, move, 1) for move in valid_moves]
     
-    value_of_new_boards = [self.evaluate_board(b) for b in new_boards]
+    value_of_new_boards = [self.evaluate_board(b, board_matrix) for b in new_boards]
     value_move_pairs = zip(value_of_new_boards, valid_moves)
     best_value_move_pair = max(value_move_pairs)
 
@@ -377,7 +386,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     if (current_turn == -1) and (previous_board is not None):
       previous_board = -1 * previous_board
 
-    board_input = self.board_to_input_transform(board_matrix)
+    board_input = self.board_to_input_transform_policy(board_matrix, previous_board)
     
     output_probs = sess.run(softmax_output_policy, feed_dict={
       x_policy : board_input,
@@ -461,17 +470,46 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     return current_board, current_turn
 
 
-  def board_to_input_transform(self, board_matrix):
+  def board_to_input_transform_value(self, board_matrix, previous_board):
     """
     I should get this ready for features, but I really don't want to.
+    Remember, this is assuming that it's white's turn? No. For policy,
+    it's black's turn. For value, it's white's turn. I think that means 
+    I should have two of these functions.
+    How can I still not be sure if I have a *-1 error somewhere? That's
+    ridiculous.
+
+    ASSUMES THIS PLAYER IS WHITE. IMPORTANT FOR LEGAL_MOVE MAP.
     """
-    flattened = board_matrix.reshape((1, BOARD_SIZE*BOARD_SIZE))
-    return flattened
+    current_turn = -1
+    legal_moves_map = util.output_valid_moves_boardmap(board_matrix, previous_board, current_turn)
+    liberty_map = util.output_liberty_map(board_matrix)
+    feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
+    feature_array = feature_array.T
+    flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
+    
+    return flattened_input
 
+  def board_to_input_transform_policy(self, board_matrix, previous_board):
+    """
+    I should get this ready for features, but I really don't want to.
+    Remember, this is assuming that it's white's turn? No. For policy,
+    it's black's turn. For value, it's white's turn. I think that means 
+    I should have two of these functions.
+    How can I still not be sure if I have a *-1 error somewhere? That's
+    ridiculous.
 
-  def multiple_boards_to_input_transform(self, board_matrices):
-    mapped = map(self.board_to_input_transform, board_matrices)
-    return np.asarray(mapped)
+    ASSUMES THIS PLAYER IS BLACK. IMPORTANT FOR LEGAL_MOVE MAP.
+    """
+    current_turn = 1
+    legal_moves_map = util.output_valid_moves_boardmap(board_matrix, previous_board, current_turn)
+    liberty_map = util.output_liberty_map(board_matrix)
+    feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
+    feature_array = feature_array.T
+    flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
+    
+    return flattened_input
+
 
 
 
@@ -491,7 +529,6 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
       if len(move_list) > 100:
         print("simulation lasted more than 100 moves")
         return None
-      # best_move = self.get_best_move(board_matrix, previous_board, current_turn)
       on_policy_move = self.from_board_to_on_policy_move(board_matrix, GLOBAL_TEMPERATURE, previous_board, current_turn)
       if on_policy_move is None:
         new_board = copy(board_matrix)
@@ -573,13 +610,12 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
     return value_board_move_list
 
-  def from_value_board_move_list_to_value_list(self, value_board_move_list):
+  def from_value_board_move_list_to_value_list(self, value_board_move_list, origin_board):
     possible_moves_length = BOARD_SIZE*BOARD_SIZE+1
     goal_array = np.full((possible_moves_length, ), -10000.0, np.float32)
 
     for (value, board, move) in value_board_move_list:
-      # input_board = board_to_input_transform(board)
-      computed_board_value = self.evaluate_board(board)
+      computed_board_value = self.evaluate_board(board, origin_board)
       move_index = from_move_tuple_to_index(move)
       goal_array[move_index] = computed_board_value
 
@@ -606,28 +642,60 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     print("Result of on-policy simulation: ")
     print(y_goal)
 
+    board_inputs = np.asarray([self.board_to_input_transform_value(b, board_input)[0] for b in boards])
+    print("SHAPE OF BOARDS: " + str(boards.shape) + ". SHAPE OF BOARD_INPUTS: " + str(board_inputs.shape))
+
     y_goal = y_goal.reshape((-1,1))
-    boards = boards.reshape((-1, BOARD_SIZE*BOARD_SIZE))
+    # boards = boards.reshape((-1, BOARD_SIZE*BOARD_SIZE))
+
+
 
     sess.run(train_step_value, feed_dict={
-      x_value : boards,
+      x_value : board_inputs,
       y_ : y_goal
     })
     
     print("updated value network from all resulting boards!")
-    value_list = self.from_value_board_move_list_to_value_list(value_board_move_list)
+    value_list = self.from_value_board_move_list_to_value_list(value_board_move_list, board_input)
     # value_list = np.asarray([value_list], dtype=np.float32)
     value_list = value_list.reshape((1,BOARD_SIZE*BOARD_SIZE+1))
     # print("created true value list. Its shape is :  " + str(value_list.shape) + " . Should be 1,26")
+    print("value list and softmax_policy_output to follow: ")
     print(value_list)
 
+    board_input = self.board_to_input_transform_policy(board_input, None)    
 
-    board_input = self.board_to_input_transform(board_input)
+
+    softmax_policy = sess.run(softmax_output_policy, feed_dict={
+      x_policy : board_input,
+      computed_values_for_moves : value_list,
+      softmax_temperature_policy : GLOBAL_TEMPERATURE 
+    })
+    
+    print("softmax_policy printing now: ")
+    print(softmax_policy)
+
+    print("board_input printing now: ")
+    print(board_input)
+    print(board_input.shape)
+    print("\n\n\n\n")
+
+
+
     sess.run(train_step_policy, feed_dict={
       x_policy : board_input,
       computed_values_for_moves : value_list,
       softmax_temperature_policy : GLOBAL_TEMPERATURE 
     })
+
+    error_for_policy = sess.run(error_metric_policy, feed_dict={
+      x_policy : board_input,
+      computed_values_for_moves : value_list,
+      softmax_temperature_policy : GLOBAL_TEMPERATURE 
+    })
+    
+    print("Error metric for policy at this step: ")
+    print(error_for_policy)
 
     print("updated policy network!")
 
@@ -643,10 +711,10 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 def train_and_save_from_n_move_board(n, batch_num=0):
   print("training on policy board after " + str(n) + " steps")
   load_path = None
-  save_path = './saved_models/convnet_with_policy/trained_on_' + str(1) + '_batch.ckpt'
+  save_path = './saved_models/convnet_feat_pol/trained_on_' + str(1) + '_batch.ckpt'
   if batch_num != 0:
-    load_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num) + '_batch.ckpt'
-    save_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num+1) + '_batch.ckpt'
+    load_path = './saved_models/convnet_feat_pol/trained_on_' + str(batch_num) + '_batch.ckpt'
+    save_path = './saved_models/convnet_feat_pol/trained_on_' + str(batch_num+1) + '_batch.ckpt'
 
   c_b = Convbot_FIVE_POLICY_FEATURES(load_path=load_path)
 
@@ -659,6 +727,11 @@ def train_and_save_from_n_move_board(n, batch_num=0):
 
 
 
+# def automate_testing(initial_start):
+#   counter = 0
+#   round_num = 0
+#   temp_exponent = 0.
+#   while True:
 
 
 
@@ -667,12 +740,13 @@ def train_and_save_from_n_move_board(n, batch_num=0):
 
 if __name__ == '__main__':
   print("training!")
-  start = 240
-  finish = 440
+  start = 0
+  finish = 100
   for i in range(start, finish):
     # train_and_save_from_n_move_board((i * 7) % 20, batch_num=i)
-    # train backwards
-    n = int(20 - ((i - start)*20 / (finish - start)))
+    # train backwards. I like this, it goes smoothly, but doesn't stick
+    # on one color.
+    n = int(20 - ((i - start)*20 / (finish - start))) + (i % 2)
     train_and_save_from_n_move_board(n, batch_num=i)
 
   print("trained!")
@@ -681,6 +755,10 @@ if __name__ == '__main__':
 
 # I've got a flippity dippity error!!!!!
 
+
+# I need to train, decreasing the GLOBAL_TEMPERATURE, over and over.
+# I could put this on an EC2 instance. And then I could write an automated testing
+# script
 
 
 
