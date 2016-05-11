@@ -476,6 +476,8 @@ def output_all_valid_moves(board_matrix, previous_board, current_player):
   for m_t in move_tuples_on_board(board_matrix):
     if move_is_valid(board_matrix, m_t, current_player, previous_board):
       valid_moves.add(m_t)
+
+  valid_moves.add(None)
   return valid_moves
 
 

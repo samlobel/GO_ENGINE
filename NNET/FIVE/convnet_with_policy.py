@@ -15,8 +15,6 @@ from go_util import util
 from copy import deepcopy as copy
 import random
 
-# from tensorflow.examples.tutorials.mnist import input_data
-# mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
 
 
 TRAIN_OR_TEST = "TRAIN"
@@ -31,9 +29,9 @@ NUM_FEATURES = 1
 
 
 MAX_TO_KEEP = 5
-KEEP_CHECKPOINT_EVERY_N_HOURS = 0.025
+KEEP_CHECKPOINT_EVERY_N_HOURS = 0.033
 
-GLOBAL_TEMPERATURE = 1.5 #Since values range from -1 to 1,
+GLOBAL_TEMPERATURE = 1.0 #Since values range from -1 to 1,
             # passing this through softmax with temp "2" will give the
             # difference between best and worst as 2.7 times as likely.
             # That's a pretty damn high temperature. But, it's good,
@@ -90,7 +88,7 @@ def bias_variable(shape, suffix):
 def last_row_bias(shape, suffix):
   if suffix is None or type(suffix) is not str:
     raise Exception("bad last-row bias initialization")  
-  initial = tf.constant(1.0, shape=shape)
+  initial = tf.constant(0.1, shape=shape)
   return tf.Variable(initial, name=prefixize(suffix))
 
 
@@ -233,33 +231,14 @@ AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
 train_step_policy = AdamOptimizer_policy.minimize(error_metric_policy)
 
 
-# y_conv_policy = tf.nn.tanh(tf.matmul(h_conv2_flat_policy, W_fc1_policy) + b_fc1_policy, name=prefixize("y_conv_policy"))
-
-# cross_entropy_policy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y_conv_policy), reduction_indices=[1]), name=prefixize("cross_entropy_policy"))
-# mean_square_policy = tf.reduce_mean(tf.reduce_sum((y_ - y_conv_policy)**2, reduction_indices=[1]), name=prefixize("mean_square_policy"))
-
-# error_metric_policy = mean_square_policy
-
-# AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
-# train_step_policy = AdamOptimizer_policy.minimize(error_metric_policy)
-
-
-
-
-
-
-
-# train_step = tf.train.AdamOptimizer(1e-4).minimize(error_metric, name=prefixize("train_step"))
 
 all_variables = tf.all_variables()
 if TRAIN_OR_TEST == "TRAIN":
   relavent_variables = all_variables
 elif TRAIN_OR_TEST == "TEST":
   relavent_variables = [v for v in all_variables if (type(v.name) is unicode) and (v.name.startswith(NAME_PREFIX))]
-  # print([v.name for v in relavent_variables])
 else:
   raise Exception("TRAIN_OR_TEST must be TRAIN or TEST. Duh.")
-  # relavent_variables = [v for v in all_variables if (type(v.name) is unicode) and (v.name.startswith(NAME_PREFIX))]
 
 
 
@@ -329,140 +308,6 @@ class Convbot_FIVE_POLICY(GoBot):
 
 
 
-  # def get_on_policy_result_for_random_board(self, num_moves):
-  #   """
-  #   I really don't want to make a binary error here, that would make
-  #   everything wrong.
-  #   y_conv outputs the chance that, if black just went, it is going to
-  #   win. Because we don't really use this on current board (instead we
-  #   use it on the next), we usually are looking at a board one step
-  #   in the future. And black is the default.
-  #   So, if we're given a board, and it says it's black's turn:
-
-  #   If it's WHITE's turn, the value of the board should represent
-  #   the chance that BLACK wins from this position, if WHITE goes next.
-
-  #   If it's BLACK's turn, the value of the board should represent
-  #   the chance that WHITE wins from this position, if BLACK goes next.
-
-  #   So, we always want the evaluator to be figuring out what BLACK's
-  #   chances of winning are. That means that if it's BLACK's turn and we're
-  #   evaluating a board (this means the AI is playing white):
-  #   We should invert the board, and say that it's white's turn. What that's saying
-  #   is that if we're trying to evaluate as a WHITE AI, act like the colors switch.
-  #   This will make us always be 'playing' BLACK, according to the simulator.
-
-  #   Then, you'll get a value for the board, which is the chance that "BLACK" wins,
-  #   which is actually the chance that YOU win (white or black)
-
-  #   So, you should similarly simulate on the flipped board, starting with the flipped
-  #   starter. So, it should always be that BLACK just went, and WHITE is about to go.
-
-  #   And then you'll get the expected chance of whoever you are winning, as well as the
-  #   'on-policy' person who wins (because it outputs 1 when 'black' wins).
-
-  #   So, 
-  #   if next == 1:
-  #     flipped = flip_board(original)
-  #     valued = evaluate_board_with_first_move(flipped, -1)
-  #   elif next == -1: (as it should be for our simulator)
-  #     valued = evaluate_board_with_first_move(original, -1)
-  #   else:
-  #     raise Exception("Should never get here!")
-
-
-
-  #   the move you would want is 
-  #   then we want to multiply the board by -1
-  #   """
-
-  #   print("training on board with " + str(num_moves) + " random-spots")
-
-  #   random_board, next_turn = util.generate_random_board((BOARD_SIZE,BOARD_SIZE), num_moves)
-  #   if random_board is None:
-  #     print("Looks like we got stuck somewhere, returning")
-  #     return None, None
-
-  #   simulator_input_board = None
-  #   simulator_next_turn = None
-  #   if next_turn == 1:
-  #     # This means next is black, which is all wrong.
-  #     # That means the initial guy was white. We're training as
-  #     # if the last move was from black.
-  #     # Because we're asking, is it a good idea for BLACK to get here?
-  #     # So, the person going should be WHITE.
-  #     simulator_input_board = -1 * random_board
-  #     simulator_next_turn = -1
-  #   elif next_turn == -1:
-  #     simulator_input_board = copy(random_board)
-  #     simulator_next_turn = -1
-  #   else:
-  #     raise Exception("Should never get here!")
-
-  #   flattened_board = simulator_input_board.reshape((1,BOARD_SIZE*BOARD_SIZE))
-  #   simulated_board_conclusion = self.get_results_of_board_on_policy(
-  #     simulator_input_board, np.zeros((BOARD_SIZE,BOARD_SIZE)), -1
-  #   )
-  #   if simulated_board_conclusion is None:
-  #     print("Lasted more than 300.")
-  #     return None, None
-  #   winner = util.determine_winner(simulated_board_conclusion)
-
-
-  #   # winner_np = np.asarray([[winner]])
-  #   # print(winner_np)
-
-    
-  #   # self.sess.run(train_step, feed_dict={
-  #   #   x : flattened_board,
-  #   #   y_ : winner_np
-  #   # })
-  #   # print("trained")
-  #   print("board and conclusion generated")
-  #   return simulator_input_board.reshape(BOARD_SIZE*BOARD_SIZE), [winner]
-
-
-
-
-
-    # # random_board, next_turn = generate_random_board((9,9), num_moves)
-    # # board_to_score = next_turn * random_board #so it seems black.
-
-    # flattened_board = board_to_score.reshape((1,81))
-
-    # # estimate_board_value = self.evaluate_board(board_to_evaluate)
-    # boards_natural_conclusion = self.get_results_of_board_on_policy(copy(random_board),
-    #                                           np.zeros((9,9)), next_turn, [])
-    # true_winner = util.determine_winner(boards_natural_conclusion)
-    # winner_np = np.asarray([[true_winner]])
-
-    # self.sess.run(train_step, feed_dict={
-    #   x : flattened_board, 
-    #   y_ : winner_np
-    # })
-    # print("trained on a board.")
-
-
-
-  # def gather_input_matrices_from_num_moves_array(self, num_move_array):
-  #   final_in = []
-  #   final_out = []
-
-  #   for num in num_move_array:
-  #     board, result = self.get_on_policy_result_for_random_board(num)
-  #     if (board is None) and (result is None):
-  #       continue
-  #     elif (board is None) or (result is None):
-  #       raise Exception("If one is None, the other should be as well.")
-  #     else:
-  #       final_in.append(board)
-  #       final_out.append(result)
-
-  #   final_in = np.asarray(final_in)
-  #   final_out = np.asarray(final_out)
-
-  #   return final_in, final_out
-
 
   def train_from_num_moves_array(self, num_move_array):
     inputs, target_outputs = self.gather_input_matrices_from_num_moves_array(num_move_array)
@@ -502,9 +347,6 @@ class Convbot_FIVE_POLICY(GoBot):
 
     new_boards = [util.update_board_from_move(board_matrix, move, 1) for move in valid_moves]
     
-    valid_moves.append(None)
-    new_boards.append(copy(board_matrix))
-
     value_of_new_boards = [self.evaluate_board(b) for b in new_boards]
     value_move_pairs = zip(value_of_new_boards, valid_moves)
     best_value_move_pair = max(value_move_pairs)
@@ -592,13 +434,8 @@ class Convbot_FIVE_POLICY(GoBot):
         # The board hit the end of the game!
         return None, None
 
-      # best_move = self.get_best_move(current_board, previous_board, current_turn)
       probabilistic_next_move = self.from_board_to_on_policy_move(current_board, GLOBAL_TEMPERATURE, previous_board, current_turn)
 
-      # if not util.move_is_valid(current_board, probabilistic_next_move, current_turn, previous_board):
-      #   raise Exception("Move is not valid! How did this get passed through!")
-      # else:
-      #   print("Just here for testing purposes, slows things down a lot. Take out when tested.")
       moves.append(probabilistic_next_move)
       next_board = util.update_board_from_move(current_board, probabilistic_next_move, current_turn)
       previous_board = current_board
@@ -697,6 +534,9 @@ class Convbot_FIVE_POLICY(GoBot):
 
   def gather_all_possible_results(self, board_input, previous_board, current_turn):
     print('gathering results')
+    if board_input is None:
+      print("passed None to gather_all_possible_results")
+      return None
     if current_turn == -1:
       board_input = -1 * board_input
     if (current_turn == -1) and (previous_board is not None):
@@ -735,6 +575,9 @@ class Convbot_FIVE_POLICY(GoBot):
       current_turn = 1
 
     value_board_move_list = self.gather_all_possible_results(board_input, None, 1)
+    if value_board_move_list is None:
+      print("Somehow we were passed a dead board.")
+      return
     
     y_goal = np.asarray([value for (value, board, move) in value_board_move_list])
     boards = np.asarray([board for (value, board, move) in value_board_move_list])
@@ -773,169 +616,6 @@ class Convbot_FIVE_POLICY(GoBot):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-  # def train_from_input_board(self, board_input, current_turn):
-  #   """
-  #   If the current_turn is 1, that means that these boards have white going first.
-  #   That's good. Our evaluator tells us, if it's white's turn, what are the
-  #   chances that black wins. 
-    
-  #   If the current_turn is -1, that means that they have black going first.
-  #   In that case, since our evaluator tells us the chance of black winning if
-  #   it is white's turn, that means we need to 
-
-
-  #   The winner in all_results is the chance that BLACK wins. If it's white's turn
-  #   that means we're evaluating from white's perspective. I think maybe I do
-  #   have a negative wrong. Time to write it all out again.
-
-  #   If it's white's turn, he wants to do the move that's most likely
-  #   to have him win. If you flip the board, and also flip who it is,
-  #   and do the analysis, and BLACK wins, that would mean that WHITE would
-  #   win in the original game. So, to choose the best move, if it's white's
-  #   turn, you flip the board, make it's black's turn, and figure out what's
-  #   most likely to make black win.
-
-  #   If current_turn == -1:
-  #     flip the input board. Generate all possible moves for BLACK (1) going
-  #     on the flipped board. Evaluate all of these boards. Choose the one that
-  #     says its most likely that BLACK wins.
-
-  #   To train, if it's white's turn:
-  #   if current_turn == -1:
-  #     flip the input board. Generate all possible moves (and corresponding
-  #     positions) for BLACK (1) going on the flipped board. Then, take
-  #     these games to their natural conclusion. If BLACK wins
-  #     (determine_winner returns 1), that's a positive result 
-  #     (meaning it would be a good move). You also do evaluation on
-  #     all of these possible next-positions. A high result means that,
-  #     if it's WHITE's turn now, that you think BLACK is going to win.
-  #     So, after this, you optimize so that the generated value is closer 
-  #     to the calculated one for ALL of the boards.
-
-  #   """
-  #   if current_turn == -1:
-  #     board_input = -1* board_input
-
-  #   all_results = self.gather_all_possible_results(board_input, None, 1) 
-  #   # that's one because I flipped the board before.
-    
-  #   y_goal = np.asarray([[result[0]] for result in all_results])
-
-  #   boards = np.asarray([result[1] for result in all_results])
-  #   boards = boards.reshape((-1, BOARD_SIZE*BOARD_SIZE))
-
-  #   print("about to train")
-  #   for i in range(3): #just silly and arbitrary
-  #     sess.run(train_step_value, feed_dict={
-  #       x_value : boards,
-  #       y_ : y_goal
-  #     })
-  #   print("trained")
-
-  # def train_from_empty_board(self):
-  #   starting_board = np.zeros((BOARD_SIZE,BOARD_SIZE))
-  #   starting_turn = 1
-  #   print("about to train")
-  #   self.train_from_input_board(starting_board, starting_turn)
-  #   print("trained")
-
-
-  # def train_from_board_after_n_moves(self, num_moves):
-  #   random_board, starting_turn = util.generate_random_board((BOARD_SIZE,BOARD_SIZE), num_moves)
-  #   print("about to train on random board after " + str(num_moves) + "moves")
-  #   self.train_from_input_board(random_board, starting_turn)
-  #   print("trained")
-
-
-
-
-  
-
-
-
-
-
-
-    # all_results = self.gather_all_possible_results(board_input, current_turn)
-
-
-
-
-
-    pass
-
-
-
-
-
-
-
-
-
-# def train_convbot_on_randoms(batch_num=0):
-
-#   load_path = None
-#   save_path = './saved_models/convnet_with_policy/trained_on_' + str(1) + '_batch.ckpt'
-#   if batch_num != 0:
-#     load_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num) + '_batch.ckpt'
-#     save_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num+1) + '_batch.ckpt'
-
-#   b_c = Convbot_FIVE_POLICY(load_path=load_path)
-#   # for i in xrange(10):
-#   #   for num_moves in xrange(50, 75):
-#   #     b_c.train_on_random_board(num_moves)
-#   #   b_c.save_to_path(save_path="./saved_models/trained_on_" + str(i+1) + "_epochs.ckpt")
-#   num_array = range(0,75)
-#   b_c.train_from_num_moves_array(num_array)
-#   b_c.save_to_path(save_path)
-
-  # print("Done with training it seems")
-
-
-# def train_and_save_from_empty_input(batch_num=0):
-#   load_path = None
-#   save_path = './saved_models/convnet_with_policy/trained_on_' + str(1) + '_batch.ckpt'
-#   if batch_num != 0:
-#     load_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num) + '_batch.ckpt'
-#     save_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num+1) + '_batch.ckpt'
-
-#   c_b = Convbot_FIVE_POLICY(load_path=load_path)
-#   c_b.train_from_empty_board()
-#   print("trained")
-#   c_b.save_to_path(save_path)
-#   print("saved!")
-
-
-# def train_and_save_from_n_board_random(n, batch_num=0):
-#   load_path = None
-#   save_path = './saved_models/convnet_with_policy/trained_on_' + str(1) + '_batch.ckpt'
-#   if batch_num != 0:
-#     load_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num) + '_batch.ckpt'
-#     save_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num+1) + '_batch.ckpt'
-
-#   c_b = Convbot_FIVE_POLICY(load_path=load_path)
-  
-#   for i in range(10):
-#     print("training on sub-batch " + str(i))
-#     c_b.train_from_board_after_n_moves(n)
-#   print("trained")
-#   c_b.save_to_path(save_path)
-#   print("saved!")
-
-
 def train_and_save_from_n_move_board(n, batch_num=0):
   print("training on policy board after " + str(n) + " steps")
   load_path = None
@@ -961,35 +641,13 @@ def train_and_save_from_n_move_board(n, batch_num=0):
 
 
 
-
-
 if __name__ == '__main__':
-  # b_c = Basic_ConvBot()
   print("training!")
-  # train_convbot_on_randoms(load_path='./saved_models/more_convnet_with_policy/trained_on_2_batch.ckpt')
-  
-  # train_and_save_from_empty_input(batch_num=3)
-  for i in range(0, 100):
+  for i in range(200, 250):
     train_and_save_from_n_move_board((i * 7) % 20, batch_num=i)
-  # for i in range(39, 250):
-  #   train_convbot_on_randoms(batch_num=i)
 
-  # train_convbot_on_randoms()
   print("trained!")
 
-  # starting_boards = []
-  # for i in xrange(81):
-  #   j = [0 for k in xrange(81)]
-  #   j[i]=1
-  #   starting_boards.append(j)
-
-  # print(b_c.evaluate_boards(starting_boards))
-  # # print(b_c.evaluate_boards(starting_boards))
-  # starting_board = np.zeros((9,9))
-  # result = b_c.get_results_of_board_on_policy(starting_board, starting_board, 1, [])
-
-  # print("\n\n\n results:\n")
-  # print(result)
 
 
 
