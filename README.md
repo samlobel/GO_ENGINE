@@ -179,3 +179,34 @@ thats how I get the models over.
 
 It's making it way more difficult because of the whole 26 output thing. It would make it a lot easier if there was a simple rule about 'are there sensible moves'. It should be easy to code that, if a move fills an eye it's bad, and if a move is illegal it's bad as well. And that way, you never need to output None!
 
+CLEARLY THIS ISN'T WORKING.
+My model should most definitely be improving after so much time training. But it's not.
+
+I could: just do value iteration. That's a possibility. The other possibility is that I could just do policy learning. Value learning is a little sexier to me, because theres not this problem of outputting None.
+
+
+If I have a proper understanding of this, what it's saying is: 
+
+You have a policy. It has parameters. When you lose a game, you don't know exactly where you went wrong. But you do know that you made a mistake somewhere along the line. So, you made a bunch of decisions during the game, and you want to update it so that these specific decisions are a little bit less likely to be made. Or more likely, if it was a win. 
+
+
+So, maybe I could almost-all-zero-multiply the thing so that only the one I care about is showing, and then minimize that guy squared.
+
+That's an interesting approach. What I do is, I want to make the probability of picking that one action smaller, so what I do is, if I lost with a specific action, 
+minimize(sum(output*zero_masks_for_all_but_the_guy_we_like))
+
+Or, if it was right, we could minimize the negative of that.
+
+That's super wasteful though, I feel like there must be a better way. I think dealing with the raw output would be a good place to start, because softmax does some funky stuff, but you can edit the underlying thing without worrying about reapportioning.
+
+Anywho, that's not a bad idea.
+
+I just want to decrease the chance of doing something if its bad, or increase it if its good. So, I compute the 
+
+
+I love that you can do interpreter-level tensorflow stuff. It rocks, its so much easier than theano.
+So, here's what you do.
+You play a game from start to finish, on-policy (with some temperature).
+If you win,
+
+

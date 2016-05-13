@@ -8,6 +8,20 @@ import random
 # def get_board_shape(board_matrix):
 #   return board.shape
 
+"""
+An interesting thing is that, maybe to prevent repitition, the only
+thing we can do is pass in the ENTIRE go history. I don't know,
+this seems a little excessive, but it would prevent the repetition that
+I get stuck on all the time. It would be a pretty expensive operation
+is the only thing.
+
+I would have to compare position AND whose turn it is, because it's
+a different position if its a different player.
+
+I think I do need to do this. That sucks, that's a lot of work. But I've got to.
+
+"""
+
 
 
 
@@ -432,6 +446,53 @@ def move_is_valid(board_matrix, move_tuple, current_player, previous_board):
 
   # I think that's it.
   return True
+
+
+def valid_move_is_sensible(board_matrix, move_tuple, current_player, previous_board):
+  """
+  The only time its REALLY stupid to fill in a move is if it makes it so you only
+  have one eye. If it doesn't cause a capture, and the piece you
+  just put down only has one liberty. Then it's a bad move.
+
+  ONLY CALL AFTER spot_is_suicide and move_makes_duplicate.
+
+  update board.
+  check if it took any neighbors. If so, output True
+  check if the stone you just placed has only one liberty.
+  If so, output False. Otherwise, output True.
+  """
+  if move_tuple is None:
+    raise Exception("I don't think that anyone is going to call this function with\
+      none")
+
+  neighbors_on_board = get_neighbors_on_board(board_matrix, move_tuple)
+  neighbors_and_color = set([(spot, get_value_for_spot(board_matrix, spot)) for spot in neighbors_on_board])
+  updated_board = update_board_from_move(board_matrix, move_tuple, current_player)
+  new_neighbors_and_color = set([(spot, get_value_for_spot(updated_board, spot)) for spot in neighbors_on_board])
+  if neighbors_and_color != new_neighbors_and_color:
+    # This means something was taken, in which case it is an okay thing to do.
+    return True
+  else:
+    # This means nothing was taken.
+    liberties_around_stone = count_liberties_around_stone(updated_board, move_tuple)
+    if liberties_around_stone == 0:
+      raise Exception("Dead stone? This probably means that you didn't check for \
+        spot_is_suicide, which is a cardinal sin.")
+    elif liberties_around_stone == 1:
+      # You never want to make a move that makes you have no liberties.
+      return False
+    else:
+      return True
+
+
+
+
+
+
+
+def move_is_sensible_and_valid(board_matrix, move_tuple, current_player, previous_board):
+
+  pass
 
 
 

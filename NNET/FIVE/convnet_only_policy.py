@@ -16,6 +16,28 @@ from copy import deepcopy as copy
 import random
 
 
+"""
+Here's what I'm going to do. I'm going to create a better policy, its
+going to be a great policy. I'm not going to do SL on it, but I'm going
+to make a pool of them. I'll pair two of them up, and they'll play each
+other some amount of times (they do 128), until the end.
+For each game, I'll have a list of state-action pairs. If the game ended
+in a win, I'll try and make the policy-choice more frequent. If the game
+ended in a loss, I'll try and make it less frequent. 
+The way I do the update:
+I was thinking, for a specific board and move, you get the index of that move,
+and then you extract that value, and then you minimize the difference between 
+it and 0, or it and 1, depending. That's perfect because it's a softmax. The problem
+is that its going to be hard to parallelize this.
+Anyway, you have a board, a state, and an outcome.
+
+I guess I could multiply the layer below by a mask, and minimize it if it was bad,
+and maximize it if it was good. That's a little silly too.
+
+Wow, you really do just mask it with something
+
+"""
+
 
 TRAIN_OR_TEST = "TRAIN"
 # TRAIN_OR_TEST = "TRAIN"
