@@ -60,7 +60,7 @@ def from_move_tuple_to_index(board_matrix, tup):
     elif (r < 0) or (c < 0):
       raise Exception("rows and columns must both be present on board")
     else:
-      index = 5*r + c
+      index = BOARD_SIZE*r + c
       return index
 
 
@@ -465,9 +465,10 @@ def move_makes_duplicate(board_matrix, move_tuple, current_player, all_previous_
   # You always want to compare to the most recent previous, because that was YOU!
   all_indices = range(0, len(all_previous_boards))
   indices_to_compare = list(reversed(all_indices))[0::2]
-  print('current_player: ' + str(current_player) + '. list of indices: ')
-  print(indices_to_compare)
+  # print('current_player: ' + str(current_player) + '. list of indices: ')
+  # print(indices_to_compare)
   for index in indices_to_compare:
+    # print(index)
     board_at_index = all_previous_boards[index]
     if boards_are_equal(board_at_index, updated_board):
       return True
@@ -499,7 +500,7 @@ def move_is_valid(board_matrix, move_tuple, current_player, all_previous_boards)
   if spot_is_suicide(board_matrix, move_tuple, current_player):
     return False
 
-  print "in move_is_valid"
+  # print "in move_is_valid"
   if move_makes_duplicate(board_matrix, move_tuple, current_player, all_previous_boards):
     return False
 
@@ -617,7 +618,7 @@ def output_valid_moves_mask(board_matrix, all_previous_boards, current_player):
     raise Exception("I dont really know how to handle board_matrix being none in output_valid_moves_boardmap")
   valid_moves = output_all_valid_moves(board_matrix, all_previous_boards, current_player)
   shape = board_matrix.shape
-  move_array = np.zeros(shape[0]*shape[1]+1)
+  move_array = np.zeros(shape[0]*shape[1] +1)
 
   for move in valid_moves:
     index = from_move_tuple_to_index(board_matrix, move)
@@ -775,7 +776,7 @@ def score_board(current_board):
   }
 
 
-def determine_winner(current_board, handicap=0.5):
+def determine_winner(current_board, handicap=0.0):
 
   scores = score_board(current_board)
   score_difference = scores['pos'] - scores['neg'] - handicap
@@ -784,7 +785,7 @@ def determine_winner(current_board, handicap=0.5):
   elif score_difference < 0:
     return -1.0
   else:
-    print "Warning, a board should never tie."
+    print "Warning, a board should never tie. But maybe it should"
     return 0.0
 
 

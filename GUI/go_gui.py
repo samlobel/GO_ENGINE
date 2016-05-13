@@ -23,7 +23,9 @@ from go_util import util
 # from NNET.FIVE.basic_convnet import Convbot_FIVE
 # from NNET.FIVE.convnet_with_policy import Convbot_FIVE_POLICY
 
-from NNET.FIVE.convnet_policy_features import Convbot_FIVE_POLICY_FEATURES
+# from NNET.FIVE.convnet_policy_features import Convbot_FIVE_POLICY_FEATURES
+
+from NNET.NINE.convnet_only_policy import Convbot_NINE_PURE_POLICY
 
 from NNET.NINE.random_mover import Random_Mover
 
@@ -65,7 +67,7 @@ class Board:
     l3 = Label(self.frame, text="Board dims:")
     l3.pack(side='left')
     self.columns = IntVar(self.root)
-    self.columns.set(5)
+    self.columns.set(9)
     self.column_dropdown = OptionMenu(self.frame, self.columns, 5, 9, 11, 13, 19)
     self.column_dropdown.pack(side='left')
 
@@ -217,7 +219,8 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_6820_batch.ckpt")
+      self.board_metadata['black_AI'] = Convbot_NINE_PURE_POLICY(folder_name="3", batch_num=1)
+      # Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_6820_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
@@ -227,7 +230,8 @@ class Board:
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_25_batch.ckpt")
                 
     if self.board_metadata['white_player'] == 'AI':
-      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_6820_batch.ckpt")
+      self.board_metadata['white_AI'] = Convbot_NINE_PURE_POLICY(folder_name="1", batch_num=1)
+      # Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_6820_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_19_batch.ckpt")
       # Convbot_FIVE_POLICY(load_path="../NNET/FIVE/saved_models/convnet_with_policy/trained_on_440_batch.ckpt")
@@ -288,9 +292,11 @@ class Board:
       print "no AI for player " + str(turn)
       return
 
-    time.sleep(0.1)
+    # time.sleep(0.1)
     best_move = the_ai.get_best_move(self.board_data, self.all_previous_boards, self.turn)
-    print best_move
+    print "best move: " + str(best_move) + " for turn: " + str(self.turn)
+    if not util.move_is_valid(self.board_data, best_move, self.turn, self.all_previous_boards):
+      print "tried an invalid move!"
     self.clicked_at_location(best_move)
 
     
