@@ -17,21 +17,22 @@ import random
 
 
 
+
 TRAIN_OR_TEST = "TRAIN"
 # TRAIN_OR_TEST = "TRAIN"
 
 
-NAME_PREFIX='fivebot_feat_pol_'
+NAME_PREFIX='ninebot_only_policy_'
 
-BOARD_SIZE = 5
+BOARD_SIZE = 9
 
 NUM_FEATURES = 3
 
 
 MAX_TO_KEEP = 5
-KEEP_CHECKPOINT_EVERY_N_HOURS = 0.033
+KEEP_CHECKPOINT_EVERY_N_HOURS = 0.1
 
-GLOBAL_TEMPERATURE = 2.0 #Since values range from -1 to 1,
+GLOBAL_TEMPERATURE = 1.5 #Since values range from -1 to 1,
             # passing this through softmax with temp "2" will give the
             # difference between best and worst as 2.7 times as likely.
             # That's a pretty damn high temperature. But, it's good,
@@ -70,6 +71,14 @@ wont weights be able to send it down if it needs to?
 FEATURE 1: RAW INPUT
 FEATURE 2: VALID MOVES
 FEATURE 3: LIBERTY MAP
+
+"""
+
+
+"""
+Like a god damn idiot, I deleted that whole blurb on how I want to do this.
+And I'm too tired to think straight. But gotta keep chugging until my head
+hits the keyboard. The enlightened way.
 
 """
 
@@ -116,12 +125,6 @@ def bias_variable(shape, suffix):
   initial = tf.constant(0.1, shape=shape)
   return tf.Variable(initial, name=prefixize(suffix))
 
-def last_row_bias(shape, suffix):
-  if suffix is None or type(suffix) is not str:
-    raise Exception("bad last-row bias initialization")  
-  initial = tf.constant(0.1, shape=shape)
-  return tf.Variable(initial, name=prefixize(suffix))
-
 
 def conv2d(x,W, padding='VALID'):
   if not (padding=='SAME' or padding=='VALID'):
@@ -152,53 +155,43 @@ for both the policy network and the value network.
 The y_ output is used for training just the value network
 the computed_values_for_moves goes into a softmax to create the target
 output for the policy network.
+
+What each of these does is confusing.
+
+x_policy: is the transformed board input. Right now it's three features long, and
+soon it will be four, but its your standard input.
+
+softmax_temperature_policy: is the temperature of the softmax layer.
+
+legal_moves_mask_policy: we use this as a way to output a valid move. It is 1 wherever a
+move is valid, and 0 wherever a move is invalid.
+
+training_mask_policy : its sort of the opposite of legal_moves_mask_policy. It is
+one wherever a move is ILLEGAL, and also 1 wherever you actually went.
+The reason for this is, where this is 1, the optimizer will have access to the 
+underlying things, and therefore will optimizer parameters. Where it is zero,
+the optimizer can ignore. It's very nice that these things are so smart.
+
+softmax_output_goal_policy: This is the goal of what you want to acheive. It
+really only matters at locations that the training_mask_policy is 1. You should
+pass in all zeros if you're trying to dissuade from a losing move, and all 
+zeros EXCEPT for the move-spot you're trying to persuade more of a winning move.
 """
 
-x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES], name=prefixize('x_value'))
+# x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES], name=prefixize('x_value'))
 
 x_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES], name=prefixize('x_policy'))
 softmax_temperature_policy = tf.placeholder(tf.float32, [], name=prefixize('softmax_temperature_policy'))
 
-y_ = tf.placeholder(tf.float32, [None, 1], name=prefixize("y_"))
+legal_moves_mask_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('legal_moves_mask_policy'))
 
-computed_values_for_moves = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('computed_values_for_moves'))
-
-
-"""
-VALUE NETWORK VARIABLES
-All variables used for the value network, including outputs.
-Note that the optimizers don't have names, for either.
-
-These should all end in the word 'value'.
-"""
+training_mask_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('training_mask_policy'))
+softmax_output_goal_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('softmax_output_goal_policy'))
 
 
+# y_ = tf.placeholder(tf.float32, [None, 1], name=prefixize("y_"))
 
-W_conv1_value = weight_variable([3,3,NUM_FEATURES,20], suffix="W_conv1_value")
-b_conv1_value = bias_variable([20], suffix="b_conv1_value")
-
-x_image_value = tf.reshape(x_value, [-1,BOARD_SIZE,BOARD_SIZE,NUM_FEATURES], name=prefixize("x_image_value"))
-
-h_conv1_value = tf.nn.relu(conv2d(x_image_value, W_conv1_value, padding="VALID") + b_conv1_value, name=prefixize("h_conv1_value"))
-
-W_conv2_value = weight_variable([2,2,20,20], suffix="W_conv2_value")
-b_conv2_value = bias_variable([20], suffix="b_conv2_value")
-h_conv2_value = tf.nn.relu(conv2d(h_conv1_value, W_conv2_value, padding="VALID") + b_conv2_value, name=prefixize("h_conv2_value"))
-
-W_fc1_value = tf.Variable(tf.random_uniform([2*2*20,1],-0.1,0.1), name=prefixize("W_fc1_value"))
-b_fc1_value = last_row_bias([1], suffix="b_fc1_value")
-
-h_conv2_flat_value = tf.reshape(h_conv2_value, [-1, 2*2*20], name=prefixize("h_conv2_flat_value"))
-y_conv_value = tf.nn.tanh(tf.matmul(h_conv2_flat_value, W_fc1_value) + b_fc1_value, name=prefixize("y_conv_value"))
-
-cross_entropy_value = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y_conv_value), reduction_indices=[1]), name=prefixize("cross_entropy_value"))
-# mean_square_value = tf.reduce_mean(tf.reduce_sum((y_ - y_conv_value)**2, reduction_indices=[1]), name=prefixize("mean_square_value"))
-mean_square_value = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(y_, y_conv_value), reduction_indices=[1]), name=prefixize("mean_square_value"))
-
-error_metric_value = mean_square_value
-
-AdamOptimizer_value = tf.train.AdamOptimizer(1e-4)
-train_step_value = AdamOptimizer_value.minimize(error_metric_value)
+# computed_values_for_moves = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('computed_values_for_moves'))
 
 
 """
@@ -219,50 +212,55 @@ just need one number any more, but 26 (or 82, etc.) numbers. So, maybe
 I should have padding='SAME' for the parts of the policy network that are 
 not the first layer. OR/ALSO, I can just have a more complex fully-connected
 part.
-
 """
 
 
-
-W_conv1_policy = weight_variable([3,3,NUM_FEATURES,20], suffix="W_conv1_policy")
-b_conv1_policy = bias_variable([20], suffix="b_conv1_policy")
-
 x_image_policy = tf.reshape(x_policy, (-1,BOARD_SIZE,BOARD_SIZE,NUM_FEATURES), name=prefixize("x_image_policy"))
 
-h_conv1_policy = tf.nn.relu(conv2d(x_image_policy, W_conv1_policy, padding="SAME") + b_conv1_policy, name=prefixize("h_conv1_policy"))
+W_conv1_policy = weight_variable([5,5,NUM_FEATURES,20], suffix="W_conv1_policy")
+b_conv1_policy = bias_variable([20], suffix="b_conv1_policy")
+h_conv1_policy = tf.nn.elu(conv2d(x_image_policy, W_conv1_policy, padding="SAME") + b_conv1_policy, name=prefixize("h_conv1_policy"))
 
 W_conv2_policy = weight_variable([3,3,20,20], suffix="W_conv2_policy")
 b_conv2_policy = bias_variable([20], suffix="b_conv2_policy")
-h_conv2_policy = tf.nn.relu(conv2d(h_conv1_policy, W_conv2_policy, padding="SAME") + b_conv2_policy, name=prefixize("h_conv2_policy"))
+h_conv2_policy = tf.nn.elu(conv2d(h_conv1_policy, W_conv2_policy, padding="SAME") + b_conv2_policy, name=prefixize("h_conv2_policy"))
+
+W_conv3_policy = weight_variable([3,3,20,20], suffix="W_conv3_policy")
+b_conv3_policy = bias_variable([20], suffix="b_conv3_policy")
+h_conv3_policy = tf.nn.elu(conv2d(h_conv2_policy, W_conv3_policy, padding="SAME") + b_conv3_policy, name=prefixize("h_conv3_policy"))
+
+W_conv4_policy = weight_variable([3,3,20,20], suffix="W_conv4_policy")
+b_conv4_policy = bias_variable([20], suffix="b_conv4_policy")
+h_conv4_policy = tf.nn.elu(conv2d(h_conv3_policy, W_conv4_policy, padding="SAME") + b_conv4_policy, name=prefixize("h_conv4_policy"))
+
+W_conv5_policy = weight_variable([3,3,20,20], suffix="W_conv5_policy")
+b_conv5_policy = bias_variable([20], suffix="b_conv5_policy")
+h_conv5_policy = tf.nn.elu(conv2d(h_conv4_policy, W_conv5_policy, padding="SAME") + b_conv5_policy, name=prefixize("h_conv5_policy"))
+
+h_conv5_flat_policy = tf.reshape(h_conv5_policy, [-1, BOARD_SIZE*BOARD_SIZE*20], name=prefixize("h_conv2_flat_policy"))
+
+W_fc1_policy = weight_variable([BOARD_SIZE*BOARD_SIZE*20, 2*BOARD_SIZE*20], suffix="W_fc1_policy")
+b_fc1_policy = bias_variable([2*BOARD_SIZE*20], suffix="b_fc1_policy")
+h_fc1_policy = tf.nn.elu(tf.matmul(h_conv5_flat_policy, W_fc1_policy) + b_fc1_policy, name="h_fc1_policy")
 
 
-
-W_fc1_policy = tf.Variable(tf.random_uniform([5*5*20, BOARD_SIZE*BOARD_SIZE + 1],-0.1,0.1), name=prefixize("W_fc1_policy"))
-b_fc1_policy = last_row_bias([BOARD_SIZE*BOARD_SIZE + 1], suffix="b_fc1_policy")
-
-h_conv2_flat_policy = tf.reshape(h_conv2_policy, [-1, 5*5*20], name=prefixize("h_conv2_flat_policy"))
-h_fc1_policy = tf.nn.relu(tf.matmul(h_conv2_flat_policy, W_fc1_policy) + b_fc1_policy, name="h_fc1_policy")
-
-# W_fc2_policy = tf.Variable(tf.random_uniform([128, (BOARD_SIZE*BOARD_SIZE + 1)],-0.1,0.1), name=prefixize("W_fc2_policy"))
-# b_fc2_policy = last_row_bias([BOARD_SIZE*BOARD_SIZE + 1], suffix="b_fc1_policy")
-
-# softmax_input_policy = tf.matmul(h_fc1_policy,W_fc2_policy) + b_fc2_policy
 softmax_output_policy = softmax_with_temp(h_fc1_policy, softmax_temperature_policy, suffix="softmax_output_policy")
 
+legal_softmax_output_policy = tf.mul(softmax_output_policy, legal_moves_mask_policy)
+sum_of_legal_probs_policy = tf.reduce_sum(legal_softmax_output_policy, reduction_indices=[1], keep_dims=True)
+normalized_legal_softmax_output_policy = legal_softmax_output_policy / sum_of_legal_probs_policy
+# The normalized_legal_softmax_output_policy is the thing you want to
+# return for get_best_move, or for choosing your next move in a game.
 
-softmax_of_target_policy = softmax_with_temp(computed_values_for_moves, softmax_temperature_policy, suffix="softmax_of_target_policy")
+masked_softmax_output_policy = tf.mul(softmax_output_policy, training_mask_policy)
+# 
+
+mean_square_policy = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(masked_softmax_output_policy, softmax_output_goal_policy), reduction_indices=[1]), name=prefixize("mean_square_policy"))
 
 
+AdamOptimizer_policy = tf.train.AdamOptimizer_policy(learning_rate=0.01, momentum=0.9)
+train_step_policy = MomentumOptimizer_policy.minimize(mean_square_policy)
 
-cross_entropy_policy = tf.reduce_mean(-tf.reduce_sum(softmax_of_target_policy * tf.log(softmax_output_policy), reduction_indices=[1]), name=prefixize("cross_entropy_policy"))
-mean_square_policy = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(softmax_of_target_policy, softmax_output_policy), reduction_indices=[1]), name=prefixize("mean_square_policy"))
-
-error_metric_policy = cross_entropy_policy
-
-# AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
-# train_step_policy = AdamOptimizer_policy.minimize(error_metric_policy)
-MomentumOptimizer_policy = tf.train.MomentumOptimizer(learning_rate=0.1, momentum=0.5)
-train_step_policy = MomentumOptimizer_policy.minimize(error_metric_policy)
 
 
 
@@ -293,6 +291,15 @@ than it being white's turn. So, I think what I should instead do is:
 when it's white's turn, invert the board. Then, try to win with white. That's the spot
 you would want to go. I think that's a much better idea.
 
+
+Is this a good idea? I really don't know how to do these optimizers at the same time.
+
+But, if they have internal variables, then the values are determined by the session,
+not the graph. The graph is just a series of computations. So, I think I'm good.
+
+The only time I might not be good is when I'm initializing from the first time. No,
+I should be good then too.
+
 """
 
 
@@ -311,10 +318,10 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
       print("Initialized")
     else:
       saver.restore(self.sess, load_path)
-      # print("Loaded from path")
-    
-    # self.saver = saver
-    # self.self.sess = self.sess
+
+
+
+
 
   def save_to_path(self, save_path=None):
     if save_path is None:
@@ -324,158 +331,237 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
 
 
-  def evaluate_board(self, board_matrix, all_previous_boards):
-    # Remember, evaluate_board is always run after a sample move. Also, it's
-    # always run assuming that black just went. You need to do board*-1 if you
-    # want to run it assuming white just went. So, the board I see has white going next.
-    # That makes it a little bit confusing, but it also is the only way that
-    # makes sense. Plus, as long as I'm consistent, I think I'm fine.
-    
-    # liberty_map = util.output_liberty_map(board_matrix)
-    # flattened = board_matrix.reshape((1,BOARD_SIZE*BOARD_SIZE))
-    input_board = self.board_to_input_transform_value(board_matrix, all_previous_boards)
-    input_reshaped = self.sess.run(x_image_value, feed_dict={
-        x_value : input_board
-    })
-    # print("unreshaped image:")
-    # print(input_board)
-    # print("reshaped image")
-    # print(input_reshaped)
-    # print('\n\n\n\n\n')
-    results = self.sess.run(y_conv_value, feed_dict={
-        x_value : input_board
-    })
-    return results[0]
-
-  # def evaluate_boards(self, board_matrices):
-  #   results = self.sess.run(y_conv_value, feed_dict={
-  #       x_value : board_matrices
-  #     })
-  #   return results
-
-  def get_best_move_policy(self, board_matrix, previous_board, current_turn):
+  def get_best_move(self, board_matrix, all_previous_boards, current_turn):
 
     if (board_matrix is None) or not (current_turn in (-1,1)):
       raise Exception("Invalid inputs to from_board_to_on_policy_move.")
-    
-    if current_turn == -1:
-      board_matrix = -1 * board_matrix
-    if (current_turn == -1) and (previous_board is not None):
-      previous_board = -1 * previous_board
 
-    board_input = self.board_to_input_transform_policy(board_matrix, previous_board)
-    
-    output_probs = self.sess.run(softmax_output_policy, feed_dict={
+    valid_moves_mask = util.output_valid_moves_mask(board_matrix, all_previous_boards, current_turn)
+    valid_moves_mask.reshape([1, BOARD_SIZE*BOARD_SIZE+1])    
+
+    board_input = self.board_to_input_transform_policy(board_matrix, all_previous_boards, current_turn)
+
+    legal_move_output_probs = sess.run(normalized_legal_softmax_output_policy, feed_dict={
       x_policy : board_input,
-      softmax_temperature_policy : GLOBAL_TEMPERATURE
+      softmax_temperature_policy : GLOBAL_TEMPERATURE,
+      legal_moves_mask_policy : valid_moves_mask
     })
 
-    output_probs = output_probs[0]
-
-    legal_moves = np.zeros(BOARD_SIZE*BOARD_SIZE + 1, dtype=np.float32)
-    for i in xrange(BOARD_SIZE*BOARD_SIZE+1):
-      move = from_index_to_move_tuple(i) #This should include None.
-      if util.move_is_valid(board_matrix, move, 1, previous_board):
-        legal_moves[i] = 1.0
-      else:
-        continue
-
-    output_probs = output_probs * legal_moves
-    print(output_probs)
-
-    index_max = np.argmax(output_probs)
-    return from_index_to_move_tuple(index_max)
+    legal_move_output_probs = legal_move_output_probs[0]
+    best_move_index = np.argmax(legal_move_output_probs)
+    return from_index_to_move_tuple(best_move_index)
 
 
 
-
-
-  def get_best_move(self, board_matrix, all_previous_boards, current_turn):
-    """
-    As I said before: If current_turn==1, then you simulate one move ahead,
-    and output the move with the highest score.
-    If current_turn==-1, then you flip the board, simulate one move ahead as
-    if you are black, and output the move with the highest score (e.g. the
-
-    Similar to the old one, but the flipping happens at a more easy-to-reason
-    place.
-    """
-    valid_moves = list(util.output_all_valid_moves(board_matrix, all_previous_boards, current_turn))
-    if len(valid_moves) is None:
-      return None
-
-    if current_turn == -1:
-      board_matrix = -1 * board_matrix
-    # if (current_turn == -1) and (previous_board is not None):
-    #   previous_board = -1 * previous_board
-
-    # valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, 1))
-    # if len(valid_moves) is None:
-    #   return None
-
-    new_boards = [util.update_board_from_move(board_matrix, move, 1) for move in valid_moves]
-    
-    value_of_new_boards = [self.evaluate_board(b, board_matrix) for b in new_boards]
-    value_move_pairs = zip(value_of_new_boards, valid_moves)
-    best_value_move_pair = max(value_move_pairs)
-
-    return best_value_move_pair[1]
-
-
-  def from_board_to_on_policy_move(self, board_matrix, temperature, previous_board, current_turn):
+  def from_board_to_on_policy_move(self, board_matrix, all_previous_boards, current_turn):
     """
     This is the thing I describe below.
     As always, we want to always be looking at the board from BLACK's
     perspective. Right?
     """
-    if (board_matrix is None) or (temperature is None) or not (current_turn in (-1,1)):
+    if (board_matrix is None) or not (current_turn in (-1,1)):
       raise Exception("Invalid inputs to from_board_to_on_policy_move.")
-    
-    if current_turn == -1:
-      board_matrix = -1 * board_matrix
-    if (current_turn == -1) and (previous_board is not None):
-      previous_board = -1 * previous_board
 
-    board_input = self.board_to_input_transform_policy(board_matrix, previous_board)
-    
-    output_probs = self.sess.run(softmax_output_policy, feed_dict={
+    valid_moves_mask = util.output_valid_moves_mask(board_matrix, all_previous_boards, current_turn)
+    valid_moves_mask.reshape([1, BOARD_SIZE*BOARD_SIZE+1])    
+
+    board_input = self.board_to_input_transform_policy(board_matrix, all_previous_boards, current_turn)
+
+    legal_move_output_probs = sess.run(normalized_legal_softmax_output_policy, feed_dict={
       x_policy : board_input,
-      softmax_temperature_policy : temperature
+      softmax_temperature_policy : GLOBAL_TEMPERATURE,
+      legal_moves_mask_policy : valid_moves_mask
     })
 
-    output_probs = output_probs[0]
+    legal_move_output_probs = legal_move_output_probs[0]
 
-    # print("output probs: ")
-    # print(output_probs)
-
-    legal_moves = np.zeros(BOARD_SIZE*BOARD_SIZE + 1, dtype=np.float32)
-    for i in xrange(BOARD_SIZE*BOARD_SIZE+1):
-      move = from_index_to_move_tuple(i) #This should include None.
-      if util.move_is_valid(board_matrix, move, 1, previous_board):
-        legal_moves[i] = 1.0
-      else:
-        continue
-    # print(legal_moves)
-    only_legal_probs = output_probs * legal_moves
-    # print(only_legal_probs)
-    normalized_legal_probs = only_legal_probs / np.sum(only_legal_probs)
-    # print(normalized_legal_probs)
     random_number = random.random()
     prob_sum = 0.0
     desired_index = -1
-    for i in xrange(len(normalized_legal_probs)):
-      prob_sum += normalized_legal_probs[i]
+
+    for i in xrange(len(legal_move_output_probs)):
+      prob_sum += legal_move_output_probs[i]
       if prob_sum >= random_number:
         desired_index = i
         break
 
     if desired_index == -1:
-      print(normalized_legal_probs)
+      print(legal_move_output_probs)
       print(prob_sum)
       raise Exception("for some reason, prob_sum did not catch random_number")
 
     tup = from_index_to_move_tuple(desired_index)
     return tup
+
+
+  def create_inputs_to_learn_from_for_results_of_game(self, all_boards_list, all_moves_list, this_player, player_who_won):
+    """
+    This is a complicated one. First of all, I should
+    find a way to do it in batch so I don't have to shoot myself in the head.
+
+    But maybe I can try and do it not-batched to start. Yeah, I'll do that.
+    
+    So what's the gameplan? From a board, I get all the legal moves. I also get
+    the move that actually happened. I also get the input that the person saw.
+
+    I make a mask by starting everything as a zero, and making it "1" for the
+    move that you did, plus all ILLEGAL moves.
+
+    I make a goal by starting everything as a zero. If you won, you make the spot you
+    went into a 1. If you lost, then everything remains a zero.
+
+    Then, you input the things into the model, and update! That's really it.
+
+    I've gotta do the whole game at once, there's no way around it.
+
+    """
+    set_target_to = None
+    if this_player == player_who_won:
+      set_target_to = 1.0
+    else:
+      set_target_to = 0.0
+
+
+
+    if len(all_boards_list != len(all_moves_list)):
+      raise Exception("Should pass in one board per move.")
+    current_turn = 1
+    all_inputs = []
+    all_training_masks = []
+    all_output_goals = []
+    for i in xrange(len(all_boards_list)):
+      if current_turn != this_player:
+        current_turn *= -1
+        continue
+
+      board = all_boards_list[i]
+      move = all_moves_list[i]
+
+      all_previous_boards_from_this_turn = all_boards_list[0:i] #It shouldn't include the current board.
+      # On the first time, it should be empty, on the last time, it should be all but the last.
+
+      valid_moves = util.output_all_valid_moves(board, 
+            all_previous_boards_from_this_turn, current_turn)
+
+      board_input = self.board_to_input_transform_policy(
+            board, all_previous_boards_from_this_turn, current_turn)
+
+      """
+      Training mask: I want the invalid moves to show through, as well
+      as the single move that we care about. I don't care what it does
+      to the other valid moves, I have no info on them
+      """ 
+
+      training_mask_policy = np.ones(BOARD_SIZE*BOARD_SIZE+1, dtype=np.float32)
+      for valid_move in valid_moves:
+        index_of_valid_move = self.from_move_tuple_to_index(move)
+        training_mask_policy[index_of_valid_move] = 0.0 #We don't care about valid moves.
+      # And now for the move we care about. Set it to 1, because we care about it.
+      index_of_move = self.from_move_tuple_to_index(move)
+      training_mask_policy[index_of_move] = 1.0
+
+      # And finally, the goal. All zeros if you lost, all but one zero if you won.
+      output_goal = np.zeros(BOARD_SIZE*BOARD_SIZE+1, dtype=np.float32)
+      output_goal[index_of_move] = set_target_to
+
+      all_inputs.append(board_input)
+      all_training_masks.append(training_mask_policy)
+      all_output_goals.append(output_goal)
+
+      # This is important!
+      current_turn *= -1
+
+    all_inputs = np.asarray(all_inputs, dtype=np.float32)
+    all_training_masks = np.asarray(all_training_masks, dtype=np.float32)
+    all_output_goals = np.asarray(all_output_goals, dtype=np.float32)
+
+    print("Finally, created all of the inputs. Who knows if they are \
+      right though. Will print in the beginning to make sure.")
+
+    print("inputs: ")
+    print(all_inputs)
+    print('training masks: ')
+    print(all_training_masks)
+    print('output_goals')
+    print(all_output_goals)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    pass
+
+
+    # best_move_index = np.argmax(legal_move_output_probs)
+    # return from_index_to_move_tuple(index_max)
+
+
+
+
+
+    # if (board_matrix is None) or (temperature is None) or not (current_turn in (-1,1)):
+    #   raise Exception("Invalid inputs to from_board_to_on_policy_move.")
+    
+    # if current_turn == -1:
+    #   board_matrix = -1 * board_matrix
+    # if (current_turn == -1) and (previous_board is not None):
+    #   previous_board = -1 * previous_board
+
+    # board_input = self.board_to_input_transform_policy(board_matrix, previous_board)
+    
+    # output_probs = self.sess.run(softmax_output_policy, feed_dict={
+    #   x_policy : board_input,
+    #   softmax_temperature_policy : temperature
+    # })
+
+    # output_probs = output_probs[0]
+
+    # # print("output probs: ")
+    # # print(output_probs)
+
+    # legal_moves = np.zeros(BOARD_SIZE*BOARD_SIZE + 1, dtype=np.float32)
+    # for i in xrange(BOARD_SIZE*BOARD_SIZE+1):
+    #   move = from_index_to_move_tuple(i) #This should include None.
+    #   if util.move_is_valid(board_matrix, move, 1, previous_board):
+    #     legal_moves[i] = 1.0
+    #   else:
+    #     continue
+    # # print(legal_moves)
+    # only_legal_probs = output_probs * legal_moves
+    # # print(only_legal_probs)
+    # normalized_legal_probs = only_legal_probs / np.sum(only_legal_probs)
+    # # print(normalized_legal_probs)
+    # random_number = random.random()
+    # prob_sum = 0.0
+    # desired_index = -1
+    # for i in xrange(len(normalized_legal_probs)):
+    #   prob_sum += normalized_legal_probs[i]
+    #   if prob_sum >= random_number:
+    #     desired_index = i
+    #     break
+
+    # if desired_index == -1:
+    #   print(normalized_legal_probs)
+    #   print(prob_sum)
+    #   raise Exception("for some reason, prob_sum did not catch random_number")
+
+    # tup = from_index_to_move_tuple(desired_index)
+    # return tup
     
 
   def generate_board_from_n_on_policy_moves(self, n):
@@ -846,6 +932,15 @@ def automate_testing(initial_start, start_global_temp=None):
     counter += 1
     GLOBAL_TEMPERATURE *= temp_exponent
     print("Changed GLOBAL_TEMPERATURE to " + str(GLOBAL_TEMPERATURE))
+
+
+def play_game(load_data_1, load_data_2):
+  """
+  """
+  folder_1, batch_num_1 = load_data_1 
+  folder_2, batch_num_2 = load_data_2
+  convbot_1 = 
+
 
 
 

@@ -46,6 +46,24 @@ def board_is_empty(b1):
   return boards_are_equal(b1,b2)
 
 
+def from_move_tuple_to_index(board_matrix, tup):
+  shape = board_matrix.shape
+  if shape is None:
+    raise Exception("bad board passed to from_move_tuple_to_index")
+  BOARD_SIZE = shape[0]
+  if tup is None:
+    return BOARD_SIZE*BOARD_SIZE
+  else:
+    r,c = tup
+    if (r >= BOARD_SIZE) or (c >= BOARD_SIZE):
+      raise Exception("rows and columns must both be present on board")
+    elif (r < 0) or (c < 0):
+      raise Exception("rows and columns must both be present on board")
+    else:
+      index = 5*r + c
+      return index
+
+
 
 def move_tuples_on_board(board_matrix):
   length, width = board_matrix.shape
@@ -593,6 +611,21 @@ def output_valid_moves_boardmap(board_matrix, all_previous_boards, current_playe
     else:
       set_value_for_spot(boardmap, move, 1)
   return boardmap
+
+def output_valid_moves_mask(board_matrix, all_previous_boards, current_player):
+  if board_matrix is None:
+    raise Exception("I dont really know how to handle board_matrix being none in output_valid_moves_boardmap")
+  valid_moves = output_all_valid_moves(board_matrix, all_previous_boards, current_player)
+  shape = board_matrix.shape
+  move_array = np.zeros(shape[0]*shape[1]+1)
+
+  for move in valid_moves:
+    index = from_move_tuple_to_index(board_matrix, move)
+    move_array[index] = 1.0
+    
+  return np.asarray(move_array)
+
+
 
 
 

@@ -324,7 +324,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
 
 
-  def evaluate_board(self, board_matrix, all_previous_boards):
+  def evaluate_board(self, board_matrix, all_previous_boards, current_turn):
     # Remember, evaluate_board is always run after a sample move. Also, it's
     # always run assuming that black just went. You need to do board*-1 if you
     # want to run it assuming white just went. So, the board I see has white going next.
@@ -333,7 +333,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     
     # liberty_map = util.output_liberty_map(board_matrix)
     # flattened = board_matrix.reshape((1,BOARD_SIZE*BOARD_SIZE))
-    input_board = self.board_to_input_transform_value(board_matrix, all_previous_boards)
+    input_board = self.board_to_input_transform_value(board_matrix, all_previous_boards, current_turn)
     input_reshaped = self.sess.run(x_image_value, feed_dict={
         x_value : input_board
     })
@@ -363,7 +363,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     if (current_turn == -1) and (previous_board is not None):
       previous_board = -1 * previous_board
 
-    board_input = self.board_to_input_transform_policy(board_matrix, previous_board)
+    board_input = self.board_to_input_transform_policy(board_matrix, previous_board, current_turn)
     
     output_probs = self.sess.run(softmax_output_policy, feed_dict={
       x_policy : board_input,
@@ -404,8 +404,8 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     if len(valid_moves) is None:
       return None
 
-    if current_turn == -1:
-      board_matrix = -1 * board_matrix
+    # if current_turn == -1:
+    #   board_matrix = -1 * board_matrix
     # if (current_turn == -1) and (previous_board is not None):
     #   previous_board = -1 * previous_board
 
@@ -413,9 +413,12 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     # if len(valid_moves) is None:
     #   return None
 
-    new_boards = [util.update_board_from_move(board_matrix, move, 1) for move in valid_moves]
+    new_previouses = copy(all_previous_boards)
+    new_previouses.append(board_matrix)
+
+    new_boards = [util.update_board_from_move(board_matrix, move, current_turn) for move in valid_moves]
     
-    value_of_new_boards = [self.evaluate_board(b, board_matrix) for b in new_boards]
+    value_of_new_boards = [self.evaluate_board(b, new_previouses, -1*current_turn) for b in new_boards]
     value_move_pairs = zip(value_of_new_boards, valid_moves)
     best_value_move_pair = max(value_move_pairs)
 
@@ -686,12 +689,12 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
     return value_board_move_list
 
-  def from_value_board_move_list_to_value_list(self, value_board_move_list, origin_board):
+  def from_value_board_move_list_to_value_list(self, value_board_move_list, origin_board, current_turn):
     possible_moves_length = BOARD_SIZE*BOARD_SIZE+1
     goal_array = np.full((possible_moves_length, ), -10000.0, np.float32)
 
     for (value, board, move) in value_board_move_list:
-      computed_board_value = self.evaluate_board(board, origin_board)
+      computed_board_value = self.evaluate_board(board, [origin_board], current_turn)
       move_index = from_move_tuple_to_index(move)
       goal_array[move_index] = computed_board_value
 
@@ -720,7 +723,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     # print("Result of on-policy simulation: ")
     # print(y_goal)
 
-    board_inputs = np.asarray([self.board_to_input_transform_value(b, board_input)[0] for b in boards])
+    board_inputs = np.asarray([self.board_to_input_transform_value(b, board_input, -1*current_turn)[0] for b in boards])
     # print("SHAPE OF BOARDS: " + str(boards.shape) + ". SHAPE OF BOARD_INPUTS: " + str(board_inputs.shape))
 
     y_goal = y_goal.reshape((-1,1))
@@ -743,14 +746,14 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
     
     # print("updated value network from all resulting boards!")
-    value_list = self.from_value_board_move_list_to_value_list(value_board_move_list, board_input)
+    value_list = self.from_value_board_move_list_to_value_list(value_board_move_list, board_input, -1)
     # value_list = np.asarray([value_list], dtype=np.float32)
     value_list = value_list.reshape((1,BOARD_SIZE*BOARD_SIZE+1))
     # print("created true value list. Its shape is :  " + str(value_list.shape) + " . Should be 1,26")
     # print("value list and softmax_policy_output to follow: ")
     # print(value_list)
 
-    board_input = self.board_to_input_transform_policy(board_input, None)
+    board_input = self.board_to_input_transform_policy(board_input, None, current_turn)
     # print('\n\n\n')
     # print(board_input)
     # print('\n\n\n')

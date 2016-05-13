@@ -217,7 +217,7 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_1568_batch.ckpt")
+      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_6820_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
@@ -227,7 +227,7 @@ class Board:
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_25_batch.ckpt")
                 
     if self.board_metadata['white_player'] == 'AI':
-      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_1568_batch.ckpt")
+      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_6820_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_19_batch.ckpt")
       # Convbot_FIVE_POLICY(load_path="../NNET/FIVE/saved_models/convnet_with_policy/trained_on_440_batch.ckpt")
