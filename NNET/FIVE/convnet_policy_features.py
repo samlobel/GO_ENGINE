@@ -324,7 +324,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
 
 
-  def evaluate_board(self, board_matrix, previous_board):
+  def evaluate_board(self, board_matrix, all_previous_boards):
     # Remember, evaluate_board is always run after a sample move. Also, it's
     # always run assuming that black just went. You need to do board*-1 if you
     # want to run it assuming white just went. So, the board I see has white going next.
@@ -333,7 +333,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     
     # liberty_map = util.output_liberty_map(board_matrix)
     # flattened = board_matrix.reshape((1,BOARD_SIZE*BOARD_SIZE))
-    input_board = self.board_to_input_transform_value(board_matrix, previous_board)
+    input_board = self.board_to_input_transform_value(board_matrix, all_previous_boards)
     input_reshaped = self.sess.run(x_image_value, feed_dict={
         x_value : input_board
     })
@@ -390,7 +390,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
 
 
-  def get_best_move(self, board_matrix, previous_board, current_turn):
+  def get_best_move(self, board_matrix, all_previous_boards, current_turn):
     """
     As I said before: If current_turn==1, then you simulate one move ahead,
     and output the move with the highest score.
@@ -400,14 +400,18 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     Similar to the old one, but the flipping happens at a more easy-to-reason
     place.
     """
-    if current_turn == -1:
-      board_matrix = -1 * board_matrix
-    if (current_turn == -1) and (previous_board is not None):
-      previous_board = -1 * previous_board
-
-    valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, 1))
+    valid_moves = list(util.output_all_valid_moves(board_matrix, all_previous_boards, current_turn))
     if len(valid_moves) is None:
       return None
+
+    if current_turn == -1:
+      board_matrix = -1 * board_matrix
+    # if (current_turn == -1) and (previous_board is not None):
+    #   previous_board = -1 * previous_board
+
+    # valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, 1))
+    # if len(valid_moves) is None:
+    #   return None
 
     new_boards = [util.update_board_from_move(board_matrix, move, 1) for move in valid_moves]
     
@@ -518,7 +522,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     return current_board, current_turn
 
 
-  def board_to_input_transform_value(self, board_matrix, previous_board):
+  def board_to_input_transform_value(self, board_matrix, all_previous_boards, current_turn):
     """
     I should get this ready for features, but I really don't want to.
     Remember, this is assuming that it's white's turn? No. For policy,
@@ -528,17 +532,27 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     ridiculous.
 
     ASSUMES THIS PLAYER IS WHITE. IMPORTANT FOR LEGAL_MOVE MAP.
+
+    ACTUALLY, DOESN'T ASSUME THIS. BUT IT DOES TRANSFORM IT SO THAT ITS TRUE.
+
     """
-    current_turn = -1
-    legal_moves_map = util.output_valid_moves_boardmap(board_matrix, previous_board, current_turn)
+    if current_turn not in (-1,1):
+      raise Exception("current turn must be -1 or 1. instead it is " + str(current_turn))
+    legal_moves_map = util.output_valid_moves_boardmap(board_matrix, all_previous_boards, current_turn)
     liberty_map = util.output_liberty_map(board_matrix)
-    feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
+
+    feature_array = None
+    if current_turn == -1:
+      feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
+    else:
+      feature_array = np.asarray([-1 *board_matrix, legal_moves_map, -1 * liberty_map])
+
     feature_array = feature_array.T
     flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
     
     return flattened_input
 
-  def board_to_input_transform_policy(self, board_matrix, previous_board):
+  def board_to_input_transform_policy(self, board_matrix, all_previous_boards, current_turn):
     """
     I should get this ready for features, but I really don't want to.
     Remember, this is assuming that it's white's turn? No. For policy,
@@ -548,11 +562,20 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     ridiculous.
 
     ASSUMES THIS PLAYER IS BLACK. IMPORTANT FOR LEGAL_MOVE MAP.
+
+    NOPE, IT DOESN'T. BUT IT TRANSFORMS IT SO THAT THE OUTPUT THINKS IT IS.
     """
-    current_turn = 1
+
+    # current_turn = 1
     legal_moves_map = util.output_valid_moves_boardmap(board_matrix, previous_board, current_turn)
     liberty_map = util.output_liberty_map(board_matrix)
-    feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
+
+    feature_array = None
+    if current_turn == 1:
+      feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
+    else:
+      feature_array = np.asarray([-1 *board_matrix, legal_moves_map, -1 * liberty_map])
+
     feature_array = feature_array.T
     flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
     
@@ -643,8 +666,8 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
       print("passed None to gather_all_possible_results")
       return None
 
-    valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
-    
+    valid_moves = list(util.output_all_valid_moves(board_input, all_previous_boards, 1))
+
     if current_turn == -1:
       print(board_input)
       board_input = -1 * board_input
@@ -653,7 +676,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
     # if current_turn == -1:
     #   print(board_input)
 
-    valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
+    # valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
     value_board_move_list = []
     for move in valid_moves:
       resulting_board = util.update_board_from_move(board_input, move, 1)

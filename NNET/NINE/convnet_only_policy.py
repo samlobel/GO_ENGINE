@@ -16,71 +16,22 @@ from copy import deepcopy as copy
 import random
 
 
-"""
-This is going to be a lot different than my other ones. First of all, it's going to
-be convolutional the whole way through, which should make it MUCH better. Second 
-of all, the whole thing about passing, I'm going to just code in. There's an easy
-way to see if a spot is sensible, which is that you never want to make a group
-of yours have less than two liberties. So, if you would make the move, and it ends up
-with your group in a situation that only has one liberty, you shouldn't do that move.
-Not such a hard thing to code in.
 
-Third, there's NO VALUE FUNCTION! If I want one, I can code it in later, and teach
-it based on the policy. But for now, I'm going to have an adversarial training
-ground. Here's how it's going to work:
-
-I'm going to instantiate a bunch of random networks using elu units. Let's say 5
-of them. Then, I'm going to train each one of them against a random one of the other
-guys. The way to do that is a little complicated. 
-
-To decide what move to do, you pass in a board to the policy network. You get 
-activations based on that, and for each activation, you get move-probabilities.
-You mask the illegal moves, and then re-normalize the probabilities, and then
-choose a move. You do this back and forth.
-
-Finally, at the end of the game, you see who won. If you win, you strenghten the
-moves you did throughout the game. If you lose, you weaken them. And the whole
-time, you're decreasing the strength of illegal/insensible moves. The way you
-do this is:
-
-Let's say you won. That means you want to strengthen the probability you
-made the move you did, but you don't want to directly optimize the other legal 
-moves. You take the output of the network, 
-output_probs = output_from_policy_network
-masker = (ZERO for all LEGAL moves that you didn't do, ONE otherwise)
-masked_output = output_probs * masker
-GOAL = (zeros everywhere except for the good move (if it was a loss, then zeros EVERYWHERE))
-Error = mean square difference.
-Minimize error using momentum.
-
-What's nice about that is, the masker makes it so it doesn't try and edit the masked
-probabilities. But it'll drive down the unmasked things where the goal is zero, and
-drive up the unmasked things where the goal is one.
-
-
-ANOTHER FEATURE I SHOULD ADD IS SCORE! IF A SPOT IS BLACKS AFTER SCORING, OR WHITES,
-OR WHATEVER. THATS IMPORTANT. 
-
-
-"""
-
-
-
-# TRAIN_OR_TEST = "TEST"
 TRAIN_OR_TEST = "TRAIN"
+# TRAIN_OR_TEST = "TRAIN"
 
 
-NAME_PREFIX='ninebot_policy_'
+NAME_PREFIX='fivebot_feat_pol_'
 
-BOARD_SIZE = 9
+BOARD_SIZE = 5
 
 NUM_FEATURES = 3
 
 
 MAX_TO_KEEP = 5
-KEEP_CHECKPOINT_EVERY_N_HOURS = 0.1
+KEEP_CHECKPOINT_EVERY_N_HOURS = 0.033
 
-GLOBAL_TEMPERATURE = 1.5 #Since values range from -1 to 1,
+GLOBAL_TEMPERATURE = 2.0 #Since values range from -1 to 1,
             # passing this through softmax with temp "2" will give the
             # difference between best and worst as 2.7 times as likely.
             # That's a pretty damn high temperature. But, it's good,
@@ -90,6 +41,37 @@ GLOBAL_TEMPERATURE = 1.5 #Since values range from -1 to 1,
             # temp 1.5 gives like 5 times.
 
 NUM_POLICY_GAMES_TO_SIMULATE_PER_BOARD = 5
+
+
+"""
+Let's make a list of features that will make this the most
+powerful neural network in town!
+
+First is the raw input representation, with 0 for empty, 1 for your stone,
+and -1 for their stone.
+
+Next, there's a feature layer that will be GREAT for policy network: legal
+moves. It's 0 if something is an illegal move, and a 1 if it is legal
+for the current player. Heres a question: for Value network, is it legal
+moves for the turn you're looking at or the one before? I think its the
+turn you're looking at.
+
+Then, there are the liberty layers. I think that a good idea would be 
+positive liberties if its your group, and negative liberties if its their
+group. And zero if its nobodys group.
+
+Interesting. I think the reason that they break it up the way they do is because
+linear rectifiers throw away negative numbers. That's not a bad idea.
+But, it does seeme like its silly to break the board into three features that say
+the same thing. Can't you just do that by having more hidden features? And
+wont weights be able to send it down if it needs to?
+
+
+FEATURE 1: RAW INPUT
+FEATURE 2: VALID MOVES
+FEATURE 3: LIBERTY MAP
+
+"""
 
 
 
@@ -172,9 +154,9 @@ the computed_values_for_moves goes into a softmax to create the target
 output for the policy network.
 """
 
-x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE], name=prefixize('x_value'))
+x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES], name=prefixize('x_value'))
 
-x_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE], name=prefixize('x_policy'))
+x_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES], name=prefixize('x_policy'))
 softmax_temperature_policy = tf.placeholder(tf.float32, [], name=prefixize('softmax_temperature_policy'))
 
 y_ = tf.placeholder(tf.float32, [None, 1], name=prefixize("y_"))
@@ -192,10 +174,10 @@ These should all end in the word 'value'.
 
 
 
-W_conv1_value = weight_variable([3,3,1,20], suffix="W_conv1_value")
+W_conv1_value = weight_variable([3,3,NUM_FEATURES,20], suffix="W_conv1_value")
 b_conv1_value = bias_variable([20], suffix="b_conv1_value")
 
-x_image_value = tf.reshape(x_value, [-1,BOARD_SIZE,BOARD_SIZE,1], name=prefixize("x_image_value"))
+x_image_value = tf.reshape(x_value, [-1,BOARD_SIZE,BOARD_SIZE,NUM_FEATURES], name=prefixize("x_image_value"))
 
 h_conv1_value = tf.nn.relu(conv2d(x_image_value, W_conv1_value, padding="VALID") + b_conv1_value, name=prefixize("h_conv1_value"))
 
@@ -242,10 +224,10 @@ part.
 
 
 
-W_conv1_policy = weight_variable([3,3,1,20], suffix="W_conv1_policy")
+W_conv1_policy = weight_variable([3,3,NUM_FEATURES,20], suffix="W_conv1_policy")
 b_conv1_policy = bias_variable([20], suffix="b_conv1_policy")
 
-x_image_policy = tf.reshape(x_policy, [-1,BOARD_SIZE,BOARD_SIZE,1], name=prefixize("x_image_policy"))
+x_image_policy = tf.reshape(x_policy, (-1,BOARD_SIZE,BOARD_SIZE,NUM_FEATURES), name=prefixize("x_image_policy"))
 
 h_conv1_policy = tf.nn.relu(conv2d(x_image_policy, W_conv1_policy, padding="SAME") + b_conv1_policy, name=prefixize("h_conv1_policy"))
 
@@ -255,17 +237,17 @@ h_conv2_policy = tf.nn.relu(conv2d(h_conv1_policy, W_conv2_policy, padding="SAME
 
 
 
-W_fc1_policy = tf.Variable(tf.random_uniform([5*5*20, 128],-0.1,0.1), name=prefixize("W_fc1_policy"))
-b_fc1_policy = last_row_bias([128], suffix="b_fc1_policy")
+W_fc1_policy = tf.Variable(tf.random_uniform([5*5*20, BOARD_SIZE*BOARD_SIZE + 1],-0.1,0.1), name=prefixize("W_fc1_policy"))
+b_fc1_policy = last_row_bias([BOARD_SIZE*BOARD_SIZE + 1], suffix="b_fc1_policy")
 
 h_conv2_flat_policy = tf.reshape(h_conv2_policy, [-1, 5*5*20], name=prefixize("h_conv2_flat_policy"))
 h_fc1_policy = tf.nn.relu(tf.matmul(h_conv2_flat_policy, W_fc1_policy) + b_fc1_policy, name="h_fc1_policy")
 
-W_fc2_policy = tf.Variable(tf.random_uniform([128, (BOARD_SIZE*BOARD_SIZE + 1)],-0.1,0.1), name=prefixize("W_fc2_policy"))
-b_fc2_policy = last_row_bias([BOARD_SIZE*BOARD_SIZE + 1], suffix="b_fc1_policy")
+# W_fc2_policy = tf.Variable(tf.random_uniform([128, (BOARD_SIZE*BOARD_SIZE + 1)],-0.1,0.1), name=prefixize("W_fc2_policy"))
+# b_fc2_policy = last_row_bias([BOARD_SIZE*BOARD_SIZE + 1], suffix="b_fc1_policy")
 
-softmax_input_policy = tf.matmul(h_fc1_policy,W_fc2_policy) + b_fc2_policy
-softmax_output_policy = softmax_with_temp(softmax_input_policy, softmax_temperature_policy, suffix="softmax_output_policy")
+# softmax_input_policy = tf.matmul(h_fc1_policy,W_fc2_policy) + b_fc2_policy
+softmax_output_policy = softmax_with_temp(h_fc1_policy, softmax_temperature_policy, suffix="softmax_output_policy")
 
 
 softmax_of_target_policy = softmax_with_temp(computed_values_for_moves, softmax_temperature_policy, suffix="softmax_of_target_policy")
@@ -273,11 +255,15 @@ softmax_of_target_policy = softmax_with_temp(computed_values_for_moves, softmax_
 
 
 cross_entropy_policy = tf.reduce_mean(-tf.reduce_sum(softmax_of_target_policy * tf.log(softmax_output_policy), reduction_indices=[1]), name=prefixize("cross_entropy_policy"))
+mean_square_policy = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(softmax_of_target_policy, softmax_output_policy), reduction_indices=[1]), name=prefixize("mean_square_policy"))
 
 error_metric_policy = cross_entropy_policy
 
-AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
-train_step_policy = AdamOptimizer_policy.minimize(error_metric_policy)
+# AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
+# train_step_policy = AdamOptimizer_policy.minimize(error_metric_policy)
+MomentumOptimizer_policy = tf.train.MomentumOptimizer(learning_rate=0.1, momentum=0.5)
+train_step_policy = MomentumOptimizer_policy.minimize(error_metric_policy)
+
 
 
 
@@ -295,7 +281,7 @@ saver = tf.train.Saver(var_list=relavent_variables, max_to_keep=MAX_TO_KEEP,
    keep_checkpoint_every_n_hours = KEEP_CHECKPOINT_EVERY_N_HOURS,
    name=prefixize("saver"))
 
-sess = tf.Session()
+
 
 
 
@@ -310,56 +296,101 @@ you would want to go. I think that's a much better idea.
 """
 
 
-class Convbot_FIVE_POLICY(GoBot):
+class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
   def __init__(self, load_path=None):
     GoBot.__init__(self)
     self.board_shape = (BOARD_SIZE,BOARD_SIZE)
+    self.sess = tf.Session()
     # saver = tf.train.Saver()
     # sess = tf.Session()
     self.load_path = load_path
     if load_path is None:
       init = tf.initialize_variables(relavent_variables, name=prefixize("init"))
-      sess.run(init)
+      self.sess.run(init)
       print("Initialized")
     else:
-      saver.restore(sess, load_path)
-      print("Loaded from path")
+      saver.restore(self.sess, load_path)
+      # print("Loaded from path")
     
     # self.saver = saver
-    # self.sess = sess
+    # self.self.sess = self.sess
 
   def save_to_path(self, save_path=None):
     if save_path is None:
       raise Exception("Must save to specified path")
-    full_save_path = saver.save(sess, save_path)
+    full_save_path = saver.save(self.sess, save_path)
     print("Model saved to path: " + full_save_path)
 
 
 
-  def evaluate_board(self, board_matrix):
+  def evaluate_board(self, board_matrix, all_previous_boards):
     # Remember, evaluate_board is always run after a sample move. Also, it's
     # always run assuming that black just went. You need to do board*-1 if you
-    # want to run it assuming white just went.
+    # want to run it assuming white just went. So, the board I see has white going next.
     # That makes it a little bit confusing, but it also is the only way that
     # makes sense. Plus, as long as I'm consistent, I think I'm fine.
-    flattened = board_matrix.reshape((1,BOARD_SIZE*BOARD_SIZE))
-    results = sess.run(y_conv_value, feed_dict={
-        x_value : flattened
+    
+    # liberty_map = util.output_liberty_map(board_matrix)
+    # flattened = board_matrix.reshape((1,BOARD_SIZE*BOARD_SIZE))
+    input_board = self.board_to_input_transform_value(board_matrix, all_previous_boards)
+    input_reshaped = self.sess.run(x_image_value, feed_dict={
+        x_value : input_board
+    })
+    # print("unreshaped image:")
+    # print(input_board)
+    # print("reshaped image")
+    # print(input_reshaped)
+    # print('\n\n\n\n\n')
+    results = self.sess.run(y_conv_value, feed_dict={
+        x_value : input_board
     })
     return results[0]
 
-  def evaluate_boards(self, board_matrices):
-    results = sess.run(y_conv_value, feed_dict={
-        x_value : board_matrices
-      })
-    return results
+  # def evaluate_boards(self, board_matrices):
+  #   results = self.sess.run(y_conv_value, feed_dict={
+  #       x_value : board_matrices
+  #     })
+  #   return results
+
+  def get_best_move_policy(self, board_matrix, previous_board, current_turn):
+
+    if (board_matrix is None) or not (current_turn in (-1,1)):
+      raise Exception("Invalid inputs to from_board_to_on_policy_move.")
+    
+    if current_turn == -1:
+      board_matrix = -1 * board_matrix
+    if (current_turn == -1) and (previous_board is not None):
+      previous_board = -1 * previous_board
+
+    board_input = self.board_to_input_transform_policy(board_matrix, previous_board)
+    
+    output_probs = self.sess.run(softmax_output_policy, feed_dict={
+      x_policy : board_input,
+      softmax_temperature_policy : GLOBAL_TEMPERATURE
+    })
+
+    output_probs = output_probs[0]
+
+    legal_moves = np.zeros(BOARD_SIZE*BOARD_SIZE + 1, dtype=np.float32)
+    for i in xrange(BOARD_SIZE*BOARD_SIZE+1):
+      move = from_index_to_move_tuple(i) #This should include None.
+      if util.move_is_valid(board_matrix, move, 1, previous_board):
+        legal_moves[i] = 1.0
+      else:
+        continue
+
+    output_probs = output_probs * legal_moves
+    print(output_probs)
+
+    index_max = np.argmax(output_probs)
+    return from_index_to_move_tuple(index_max)
 
 
 
 
 
-  def get_best_move(self, board_matrix, previous_board, current_turn):
+  def get_best_move(self, board_matrix, all_previous_boards, current_turn):
     """
     As I said before: If current_turn==1, then you simulate one move ahead,
     and output the move with the highest score.
@@ -369,18 +400,22 @@ class Convbot_FIVE_POLICY(GoBot):
     Similar to the old one, but the flipping happens at a more easy-to-reason
     place.
     """
-    if current_turn == -1:
-      board_matrix = -1 * board_matrix
-    if (current_turn == -1) and (previous_board is not None):
-      previous_board = -1 * previous_board
-
-    valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, 1))
+    valid_moves = list(util.output_all_valid_moves(board_matrix, all_previous_boards, current_turn))
     if len(valid_moves) is None:
       return None
 
+    if current_turn == -1:
+      board_matrix = -1 * board_matrix
+    # if (current_turn == -1) and (previous_board is not None):
+    #   previous_board = -1 * previous_board
+
+    # valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, 1))
+    # if len(valid_moves) is None:
+    #   return None
+
     new_boards = [util.update_board_from_move(board_matrix, move, 1) for move in valid_moves]
     
-    value_of_new_boards = [self.evaluate_board(b) for b in new_boards]
+    value_of_new_boards = [self.evaluate_board(b, board_matrix) for b in new_boards]
     value_move_pairs = zip(value_of_new_boards, valid_moves)
     best_value_move_pair = max(value_move_pairs)
 
@@ -401,9 +436,9 @@ class Convbot_FIVE_POLICY(GoBot):
     if (current_turn == -1) and (previous_board is not None):
       previous_board = -1 * previous_board
 
-    board_input = self.board_to_input_transform(board_matrix)
+    board_input = self.board_to_input_transform_policy(board_matrix, previous_board)
     
-    output_probs = sess.run(softmax_output_policy, feed_dict={
+    output_probs = self.sess.run(softmax_output_policy, feed_dict={
       x_policy : board_input,
       softmax_temperature_policy : temperature
     })
@@ -462,6 +497,8 @@ class Convbot_FIVE_POLICY(GoBot):
     Then you make the move.
     But remember, the policy is ALWAYS asking about a move that is BLACK's turn.
     """
+
+    global GLOBAL_TEMPERATURE
     
     current_turn = 1
     previous_board = np.zeros((BOARD_SIZE,BOARD_SIZE))
@@ -485,22 +522,71 @@ class Convbot_FIVE_POLICY(GoBot):
     return current_board, current_turn
 
 
-  def board_to_input_transform(self, board_matrix):
+  def board_to_input_transform_value(self, board_matrix, all_previous_boards, current_turn):
     """
     I should get this ready for features, but I really don't want to.
+    Remember, this is assuming that it's white's turn? No. For policy,
+    it's black's turn. For value, it's white's turn. I think that means 
+    I should have two of these functions.
+    How can I still not be sure if I have a *-1 error somewhere? That's
+    ridiculous.
+
+    ASSUMES THIS PLAYER IS WHITE. IMPORTANT FOR LEGAL_MOVE MAP.
+
+    ACTUALLY, DOESN'T ASSUME THIS. BUT IT DOES TRANSFORM IT SO THAT ITS TRUE.
+
     """
-    flattened = board_matrix.reshape((1, BOARD_SIZE*BOARD_SIZE))
-    return flattened
+    if current_turn not in (-1,1):
+      raise Exception("current turn must be -1 or 1. instead it is " + str(current_turn))
+    legal_moves_map = util.output_valid_moves_boardmap(board_matrix, all_previous_boards, current_turn)
+    liberty_map = util.output_liberty_map(board_matrix)
 
+    feature_array = None
+    if current_turn == -1:
+      feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
+    else:
+      feature_array = np.asarray([-1 *board_matrix, legal_moves_map, -1 * liberty_map])
 
-  def multiple_boards_to_input_transform(self, board_matrices):
-    mapped = map(self.board_to_input_transform, board_matrices)
-    return np.asarray(mapped)
+    feature_array = feature_array.T
+    flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
+    
+    return flattened_input
+
+  def board_to_input_transform_policy(self, board_matrix, all_previous_boards, current_turn):
+    """
+    I should get this ready for features, but I really don't want to.
+    Remember, this is assuming that it's white's turn? No. For policy,
+    it's black's turn. For value, it's white's turn. I think that means 
+    I should have two of these functions.
+    How can I still not be sure if I have a *-1 error somewhere? That's
+    ridiculous.
+
+    ASSUMES THIS PLAYER IS BLACK. IMPORTANT FOR LEGAL_MOVE MAP.
+
+    NOPE, IT DOESN'T. BUT IT TRANSFORMS IT SO THAT THE OUTPUT THINKS IT IS.
+    """
+
+    # current_turn = 1
+    legal_moves_map = util.output_valid_moves_boardmap(board_matrix, previous_board, current_turn)
+    liberty_map = util.output_liberty_map(board_matrix)
+
+    feature_array = None
+    if current_turn == 1:
+      feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
+    else:
+      feature_array = np.asarray([-1 *board_matrix, legal_moves_map, -1 * liberty_map])
+
+    feature_array = feature_array.T
+    flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
+    
+    return flattened_input
+
 
 
 
 
   def get_results_of_board_on_policy(self, board_matrix, previous_board, current_turn, move_list=None):
+    global GLOBAL_TEMPERATURE
     if move_list is None and util.boards_are_equal(board_matrix, previous_board):
       move_list = [None]
     if move_list is None:
@@ -515,7 +601,6 @@ class Convbot_FIVE_POLICY(GoBot):
       if len(move_list) > 100:
         print("simulation lasted more than 100 moves")
         return None
-      # best_move = self.get_best_move(board_matrix, previous_board, current_turn)
       on_policy_move = self.from_board_to_on_policy_move(board_matrix, GLOBAL_TEMPERATURE, previous_board, current_turn)
       if on_policy_move is None:
         new_board = copy(board_matrix)
@@ -548,7 +633,7 @@ class Convbot_FIVE_POLICY(GoBot):
     result_of_board = self.get_results_of_board_on_policy(board_matrix, previous_board, current_turn, move_list)
     if result_of_board is None:
       return None
-    winner_of_game = util.determine_winner(result_of_board, handicap=0.0)
+    winner_of_game = util.determine_winner(result_of_board)
     return winner_of_game ##Winner of game is -1 or 1, or MAYBE 0.
 
   def get_average_result_of_board_on_policy(self, board_matrix, previous_board, current_turn, move_list=None):
@@ -574,20 +659,24 @@ class Convbot_FIVE_POLICY(GoBot):
 
 
 
-  def gather_all_possible_results(self, board_input, previous_board, current_turn):
+  def gather_all_possible_results(self, board_input, all_previous_boards, current_turn):
     print('gathering results')
+    # Looks like we'll have to get valid moves before flipping board.
     if board_input is None:
       print("passed None to gather_all_possible_results")
       return None
+
+    valid_moves = list(util.output_all_valid_moves(board_input, all_previous_boards, 1))
+
     if current_turn == -1:
       print(board_input)
       board_input = -1 * board_input
-    if (current_turn == -1) and (previous_board is not None):
-      previous_board = -1 * previous_board
-    if current_turn == -1:
-      print(board_input)
+    # if (current_turn == -1) and (previous_board is not None):
+    #   previous_board = -1 * previous_board
+    # if current_turn == -1:
+    #   print(board_input)
 
-    valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
+    # valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
     value_board_move_list = []
     for move in valid_moves:
       resulting_board = util.update_board_from_move(board_input, move, 1)
@@ -597,13 +686,12 @@ class Convbot_FIVE_POLICY(GoBot):
 
     return value_board_move_list
 
-  def from_value_board_move_list_to_value_list(self, value_board_move_list):
+  def from_value_board_move_list_to_value_list(self, value_board_move_list, origin_board):
     possible_moves_length = BOARD_SIZE*BOARD_SIZE+1
     goal_array = np.full((possible_moves_length, ), -10000.0, np.float32)
 
     for (value, board, move) in value_board_move_list:
-      # input_board = board_to_input_transform(board)
-      computed_board_value = self.evaluate_board(board)
+      computed_board_value = self.evaluate_board(board, origin_board)
       move_index = from_move_tuple_to_index(move)
       goal_array[move_index] = computed_board_value
 
@@ -615,6 +703,8 @@ class Convbot_FIVE_POLICY(GoBot):
 
 
   def train_policy_and_value_from_input(self, board_input, current_turn):
+    global GLOBAL_TEMPERATURE
+
     if current_turn == -1:
       board_input = -1 * board_input
       current_turn = 1
@@ -627,39 +717,94 @@ class Convbot_FIVE_POLICY(GoBot):
     y_goal = np.asarray([value for (value, board, move) in value_board_move_list])
     boards = np.asarray([board for (value, board, move) in value_board_move_list])
     
-    print("Result of on-policy simulation: ")
-    print(y_goal)
+    # print("Result of on-policy simulation: ")
+    # print(y_goal)
+
+    board_inputs = np.asarray([self.board_to_input_transform_value(b, board_input)[0] for b in boards])
+    # print("SHAPE OF BOARDS: " + str(boards.shape) + ". SHAPE OF BOARD_INPUTS: " + str(board_inputs.shape))
 
     y_goal = y_goal.reshape((-1,1))
-    boards = boards.reshape((-1, BOARD_SIZE*BOARD_SIZE))
+    # boards = boards.reshape((-1, BOARD_SIZE*BOARD_SIZE))
 
-    sess.run(train_step_value, feed_dict={
-      x_value : boards,
+
+
+    self.sess.run(train_step_value, feed_dict={
+      x_value : board_inputs,
       y_ : y_goal
     })
+
+    transformed_input = self.sess.run(x_image_value, feed_dict={
+      x_value : board_inputs
+    })
+
+    # print("transformed_input: ")
+    # print(transformed_input)
+
+
     
-    print("updated value network from all resulting boards!")
-    value_list = self.from_value_board_move_list_to_value_list(value_board_move_list)
+    # print("updated value network from all resulting boards!")
+    value_list = self.from_value_board_move_list_to_value_list(value_board_move_list, board_input)
     # value_list = np.asarray([value_list], dtype=np.float32)
     value_list = value_list.reshape((1,BOARD_SIZE*BOARD_SIZE+1))
     # print("created true value list. Its shape is :  " + str(value_list.shape) + " . Should be 1,26")
-    print(value_list)
+    # print("value list and softmax_policy_output to follow: ")
+    # print(value_list)
+
+    board_input = self.board_to_input_transform_policy(board_input, None)
+    # print('\n\n\n')
+    # print(board_input)
+    # print('\n\n\n')
 
 
-    board_input = self.board_to_input_transform(board_input)
-    sess.run(train_step_policy, feed_dict={
+    # softmax_policy = self.sess.run(softmax_output_policy, feed_dict={
+    #   x_policy : board_input,
+    #   computed_values_for_moves : value_list,
+    #   softmax_temperature_policy : GLOBAL_TEMPERATURE 
+    # })
+
+    # softmax_target_policy = self.sess.run(softmax_of_target_policy, feed_dict={
+    #   x_policy : board_input,
+    #   computed_values_for_moves : value_list,
+    #   softmax_temperature_policy : GLOBAL_TEMPERATURE 
+    # })
+
+    # print("goal and target for policy printing now.")
+    # print(softmax_policy)
+    # print(softmax_target_policy)
+    
+    # print("softmax_policy printing now: ")
+    # print(softmax_policy)
+
+    # print("board_input printing now: ")
+    # print(board_input)
+    # print(board_input.shape)
+    # print("\n\n\n\n")
+
+
+
+    self.sess.run(train_step_policy, feed_dict={
       x_policy : board_input,
       computed_values_for_moves : value_list,
       softmax_temperature_policy : GLOBAL_TEMPERATURE 
     })
+
+    error_for_policy = self.sess.run(error_metric_policy, feed_dict={
+      x_policy : board_input,
+      computed_values_for_moves : value_list,
+      softmax_temperature_policy : GLOBAL_TEMPERATURE 
+    })
+    
+    print("Error metric for policy at this step: ")
+    print(error_for_policy)
 
     print("updated policy network!")
 
 
   def train_policy_and_value_from_on_policy_board_after_n_steps(self, n):
     current_board, current_turn = self.generate_board_from_n_on_policy_moves(n)
-    print("generated board.")
+    # print("generated board.")
     self.train_policy_and_value_from_input(current_board, current_turn)
+
 
 
 
@@ -667,21 +812,40 @@ class Convbot_FIVE_POLICY(GoBot):
 def train_and_save_from_n_move_board(n, batch_num=0):
   print("training on policy board after " + str(n) + " steps")
   load_path = None
-  save_path = './saved_models/convnet_with_policy/trained_on_' + str(1) + '_batch.ckpt'
+  save_path = './saved_models/convnet_feat_pol/trained_on_' + str(1) + '_batch.ckpt'
   if batch_num != 0:
-    load_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num) + '_batch.ckpt'
-    save_path = './saved_models/convnet_with_policy/trained_on_' + str(batch_num+1) + '_batch.ckpt'
+    load_path = './saved_models/convnet_feat_pol/trained_on_' + str(batch_num) + '_batch.ckpt'
+    save_path = './saved_models/convnet_feat_pol/trained_on_' + str(batch_num+1) + '_batch.ckpt'
 
-  c_b = Convbot_FIVE_POLICY(load_path=load_path)
+  c_b = Convbot_FIVE_POLICY_FEATURES(load_path=load_path)
 
-  print("training!")
+  # print("training!")
   c_b.train_policy_and_value_from_on_policy_board_after_n_steps(n)
   c_b.save_to_path(save_path)
-  print("saved!")
+  # print("saved!")
 
 
 
 
+
+def automate_testing(initial_start, start_global_temp=None):
+  global GLOBAL_TEMPERATURE
+  if start_global_temp is not None:
+    print("setting global temp to " + str(start_global_temp))
+    GLOBAL_TEMPERATURE = start_global_temp
+  print("GLOBAL_TEMPERATURE starts as " + str(GLOBAL_TEMPERATURE))
+  counter = 0
+  temp_exponent = 0.9
+  start = 0
+  finish = 1000
+  while True:  
+    for i in range(start, finish):
+      batch = initial_start + i + (counter*finish)
+      n = int(20 - ((i - start)*20 / (finish - start))) + (i % 2)
+      train_and_save_from_n_move_board(n, batch_num=batch)
+    counter += 1
+    GLOBAL_TEMPERATURE *= temp_exponent
+    print("Changed GLOBAL_TEMPERATURE to " + str(GLOBAL_TEMPERATURE))
 
 
 
@@ -690,21 +854,27 @@ def train_and_save_from_n_move_board(n, batch_num=0):
 
 
 if __name__ == '__main__':
-  print("training!")
-  start = 240
-  finish = 440
-  for i in range(start, finish):
-    # train_and_save_from_n_move_board((i * 7) % 20, batch_num=i)
-    # train backwards
-    n = int(20 - ((i - start)*20 / (finish - start)))
-    train_and_save_from_n_move_board(n, batch_num=i)
+  # print("training!")
+  automate_testing(0)
+  # # start = 0
+  # # finish = 100
+  # # for i in range(start, finish):
+  # #   # train_and_save_from_n_move_board((i * 7) % 20, batch_num=i)
+  # #   # train backwards. I like this, it goes smoothly, but doesn't stick
+  # #   # on one color.
+  # #   n = int(20 - ((i - start)*20 / (finish - start))) + (i % 2)
+  # #   train_and_save_from_n_move_board(n, batch_num=i)
 
-  print("trained!")
+  # print("trained!")
 
 
 
 # I've got a flippity dippity error!!!!!
 
+
+# I need to train, decreasing the GLOBAL_TEMPERATURE, over and over.
+# I could put this on an EC2 instance. And then I could write an automated testing
+# script
 
 
 

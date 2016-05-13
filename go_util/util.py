@@ -427,6 +427,11 @@ def move_makes_duplicate(board_matrix, move_tuple, current_player, all_previous_
   if len(all_previous_boards) == 0:
     return False
 
+  first = all_previous_boards[0]
+  if len(first.shape) != 2:
+    print all_previous_boards
+    raise Exception("Calling move_makes_duplicate with the above as all_previous_boards")
+
   # I'm really relying on always having an accurate list of these. So, I can say:
   updated_board = update_board_from_move(board_matrix, move_tuple, current_player)
 

@@ -243,7 +243,8 @@ class Board:
        
 
 
-    self.previous_board = np.zeros((self.columns.get(), self.columns.get()), dtype=np.int)
+    # self.previous_board = np.zeros((self.columns.get(), self.columns.get()), dtype=np.int)
+    self.all_previous_boards = []
     self.board_data = np.zeros((self.columns.get(), self.columns.get()), dtype=np.int)
     self.canvas.delete('all')
 
@@ -288,7 +289,7 @@ class Board:
       return
 
     time.sleep(0.1)
-    best_move = the_ai.get_best_move(self.board_data, self.previous_board, self.turn)
+    best_move = the_ai.get_best_move(self.board_data, self.all_previous_boards, self.turn)
     print best_move
     self.clicked_at_location(best_move)
 
