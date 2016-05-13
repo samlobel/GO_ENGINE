@@ -58,6 +58,10 @@ probabilities. But it'll drive down the unmasked things where the goal is zero, 
 drive up the unmasked things where the goal is one.
 
 
+ANOTHER FEATURE I SHOULD ADD IS SCORE! IF A SPOT IS BLACKS AFTER SCORING, OR WHITES,
+OR WHATEVER. THATS IMPORTANT. 
+
+
 """
 
 

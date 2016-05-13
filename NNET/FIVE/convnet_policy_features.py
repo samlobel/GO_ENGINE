@@ -636,18 +636,22 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
 
 
-  def gather_all_possible_results(self, board_input, previous_board, current_turn):
+  def gather_all_possible_results(self, board_input, all_previous_boards, current_turn):
     print('gathering results')
+    # Looks like we'll have to get valid moves before flipping board.
     if board_input is None:
       print("passed None to gather_all_possible_results")
       return None
+
+    valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
+    
     if current_turn == -1:
       print(board_input)
       board_input = -1 * board_input
-    if (current_turn == -1) and (previous_board is not None):
-      previous_board = -1 * previous_board
-    if current_turn == -1:
-      print(board_input)
+    # if (current_turn == -1) and (previous_board is not None):
+    #   previous_board = -1 * previous_board
+    # if current_turn == -1:
+    #   print(board_input)
 
     valid_moves = list(util.output_all_valid_moves(board_input, previous_board, 1))
     value_board_move_list = []

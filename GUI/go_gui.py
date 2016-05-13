@@ -206,6 +206,7 @@ class Board:
     self.radius = self.line_gap / 2.2
     self.turn = 1
     self.moves = []
+    self.all_previous_boards = []
     self.board_metadata = {
       'shape' : (self.columns.get(), self.columns.get()),
       'white_player' : self.white_player.get(),
@@ -216,7 +217,7 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_1570_batch.ckpt")
+      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_1568_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
@@ -226,7 +227,7 @@ class Board:
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_25_batch.ckpt")
                 
     if self.board_metadata['white_player'] == 'AI':
-      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_690_batch.ckpt")
+      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_1568_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_19_batch.ckpt")
       # Convbot_FIVE_POLICY(load_path="../NNET/FIVE/saved_models/convnet_with_policy/trained_on_440_batch.ckpt")
@@ -308,12 +309,15 @@ class Board:
     if self.disabled:
       print "disabled, cannot click"
       return
-    if util.move_is_valid(self.board_data, click_location, self.turn, self.previous_board):
+    if util.move_is_valid(self.board_data, click_location, self.turn, self.all_previous_boards):
       print "clicking for turn: " + str(self.color_map[self.turn]) + "\n\n\n"
       new_board = util.update_board_from_move(self.board_data, click_location, self.turn)
-      self.previous_board = self.board_data
+      # self.previous_board = self.board_data
+      self.all_previous_boards.append(copy(self.board_data))
       self.board_data = new_board
       self.moves.append(click_location)
+      if (len(self.moves) != len(self.all_previous_boards)):
+        raise Exception("Moves and boards NEED to be equal!")
       print self.board_data
       
       self.draw_board_data()

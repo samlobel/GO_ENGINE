@@ -39,6 +39,13 @@ def unflatten_list(l, desired_shape):
 def boards_are_equal(b1, b2):
   return np.array_equal(b1,b2)
 
+def board_is_empty(b1):
+  if b1.shape is None:
+    raise Exception('non-numpy array passed to board_is_empty')
+  b2 = np.zeros(b1.shape)
+  return boards_are_equal(b1,b2)
+
+
 
 def move_tuples_on_board(board_matrix):
   length, width = board_matrix.shape
@@ -409,29 +416,57 @@ def update_board_from_move(board_matrix, move_tuple, current_player):
 
 
 
-def move_makes_duplicate(board_matrix, move_tuple, current_player, previous_board):
+def move_makes_duplicate(board_matrix, move_tuple, current_player, all_previous_boards):
   """
   this should happen after suicide. I won't call suicide in it though because they
   should always be called in tandem.
   BUT, it also happens if someone passes, which would preclude double-passing to end.
   """
-  if previous_board is None:
+  if move_tuple is None:
+    return False
+  if len(all_previous_boards) == 0:
     return False
 
-  if boards_are_equal(board_matrix, previous_board):
-    # This means that someone passed, who cares about duplicates then.
-    return False
+  # I'm really relying on always having an accurate list of these. So, I can say:
   updated_board = update_board_from_move(board_matrix, move_tuple, current_player)
-  return boards_are_equal(updated_board, previous_board)
+
+  # place_to_start == -1
+  # if current_player == 1:
+  #   place_to_start = 0
+  # elif current_player == -1:
+  #   place_to_start = 1
+  # else:
+  #   raise Exception("current_player is not -1 or 1, in move_makes_duplicate")
+
+  # indices_to_compare = range(place_to_start, len(all_previous_boards), 2)
+  # You always want to compare to the most recent previous, because that was YOU!
+  all_indices = range(0, len(all_previous_boards))
+  indices_to_compare = list(reversed(all_indices))[0::2]
+  print('current_player: ' + str(current_player) + '. list of indices: ')
+  print(indices_to_compare)
+  for index in indices_to_compare:
+    board_at_index = all_previous_boards[index]
+    if boards_are_equal(board_at_index, updated_board):
+      return True
+    else:
+      continue
+  # If it gets here, there were no duplicates.
+  return False
 
 
-def move_is_valid(board_matrix, move_tuple, current_player, previous_board):
+
+
+def move_is_valid(board_matrix, move_tuple, current_player, all_previous_boards):
   """
   The three reasons it wouldn't be are that 
   a) it makes a duplicate position.
   b) it's a suicide move.
   c) there's already something there.
   """
+
+  if all_previous_boards is None:
+    raise Exception("You can pass a list to all_previous_boards, but not nothing!")
+
   if move_tuple is None:
     return True
 
@@ -441,62 +476,63 @@ def move_is_valid(board_matrix, move_tuple, current_player, previous_board):
   if spot_is_suicide(board_matrix, move_tuple, current_player):
     return False
 
-  if (previous_board is not None) and move_makes_duplicate(board_matrix, move_tuple, current_player, previous_board):
+  print "in move_is_valid"
+  if move_makes_duplicate(board_matrix, move_tuple, current_player, all_previous_boards):
     return False
 
   # I think that's it.
   return True
 
 
-def valid_move_is_sensible(board_matrix, move_tuple, current_player, previous_board):
-  """
-  The only time its REALLY stupid to fill in a move is if it makes it so you only
-  have one eye. If it doesn't cause a capture, and the piece you
-  just put down only has one liberty. Then it's a bad move.
+# def valid_move_is_sensible(board_matrix, move_tuple, current_player, previous_board):
+#   """
+#   The only time its REALLY stupid to fill in a move is if it makes it so you only
+#   have one eye. If it doesn't cause a capture, and the piece you
+#   just put down only has one liberty. Then it's a bad move.
 
-  ONLY CALL AFTER spot_is_suicide and move_makes_duplicate.
+#   ONLY CALL AFTER spot_is_suicide and move_makes_duplicate.
 
-  update board.
-  check if it took any neighbors. If so, output True
-  check if the stone you just placed has only one liberty.
-  If so, output False. Otherwise, output True.
-  """
-  if move_tuple is None:
-    raise Exception("I don't think that anyone is going to call this function with\
-      none")
+#   update board.
+#   check if it took any neighbors. If so, output True
+#   check if the stone you just placed has only one liberty.
+#   If so, output False. Otherwise, output True.
+#   """
+#   if move_tuple is None:
+#     raise Exception("I don't think that anyone is going to call this function with\
+#       none")
 
-  neighbors_on_board = get_neighbors_on_board(board_matrix, move_tuple)
-  neighbors_and_color = set([(spot, get_value_for_spot(board_matrix, spot)) for spot in neighbors_on_board])
-  updated_board = update_board_from_move(board_matrix, move_tuple, current_player)
-  new_neighbors_and_color = set([(spot, get_value_for_spot(updated_board, spot)) for spot in neighbors_on_board])
-  if neighbors_and_color != new_neighbors_and_color:
-    # This means something was taken, in which case it is an okay thing to do.
-    return True
-  else:
-    # This means nothing was taken.
-    liberties_around_stone = count_liberties_around_stone(updated_board, move_tuple)
-    if liberties_around_stone == 0:
-      raise Exception("Dead stone? This probably means that you didn't check for \
-        spot_is_suicide, which is a cardinal sin.")
-    elif liberties_around_stone == 1:
-      # You never want to make a move that makes you have no liberties.
-      return False
-    else:
-      return True
-
-
+#   neighbors_on_board = get_neighbors_on_board(board_matrix, move_tuple)
+#   neighbors_and_color = set([(spot, get_value_for_spot(board_matrix, spot)) for spot in neighbors_on_board])
+#   updated_board = update_board_from_move(board_matrix, move_tuple, current_player)
+#   new_neighbors_and_color = set([(spot, get_value_for_spot(updated_board, spot)) for spot in neighbors_on_board])
+#   if neighbors_and_color != new_neighbors_and_color:
+#     # This means something was taken, in which case it is an okay thing to do.
+#     return True
+#   else:
+#     # This means nothing was taken.
+#     liberties_around_stone = count_liberties_around_stone(updated_board, move_tuple)
+#     if liberties_around_stone == 0:
+#       raise Exception("Dead stone? This probably means that you didn't check for \
+#         spot_is_suicide, which is a cardinal sin.")
+#     elif liberties_around_stone == 1:
+#       # You never want to make a move that makes you have no liberties.
+#       return False
+#     else:
+#       return True
 
 
 
 
 
-def move_is_sensible_and_valid(board_matrix, move_tuple, current_player, previous_board):
-
-  pass
 
 
+# def move_is_sensible_and_valid(board_matrix, move_tuple, current_player, previous_board):
 
-def output_one_valid_move(board_matrix, previous_board, current_player):
+#   pass
+
+
+
+def output_one_valid_move(board_matrix, all_previous_boards, current_player):
   free_spaces = 0
   shape = board_matrix.shape
   # print shape
@@ -514,7 +550,7 @@ def output_one_valid_move(board_matrix, previous_board, current_player):
 
   for i in l1:
     for j in l2:
-      if move_is_valid(board_matrix, (i,j), current_player, previous_board):
+      if move_is_valid(board_matrix, (i,j), current_player, all_previous_boards):
         return (i,j)
   # print "No Valid Moves. Huh."
   return None
@@ -527,7 +563,7 @@ def output_one_valid_move(board_matrix, previous_board, current_player):
 
 
 
-def output_all_valid_moves(board_matrix, previous_board, current_player):
+def output_all_valid_moves(board_matrix, all_previous_boards, current_player):
   """
   given a board and a previous board, retuns an array of all possible
   move-tuples.
@@ -535,16 +571,16 @@ def output_all_valid_moves(board_matrix, previous_board, current_player):
   valid_moves = set([])
   length, width = board_matrix.shape
   for m_t in move_tuples_on_board(board_matrix):
-    if move_is_valid(board_matrix, m_t, current_player, previous_board):
+    if move_is_valid(board_matrix, m_t, current_player, all_previous_boards):
       valid_moves.add(m_t)
 
   valid_moves.add(None)
   return valid_moves
 
-def output_valid_moves_boardmap(board_matrix, previous_board, current_player):
+def output_valid_moves_boardmap(board_matrix, all_previous_boards, current_player):
   if board_matrix is None:
     raise Exception("I dont really know how to handle board_matrix being none in output_valid_moves_boardmap")
-  valid_moves = output_all_valid_moves(board_matrix, previous_board, current_player)
+  valid_moves = output_all_valid_moves(board_matrix, all_previous_boards, current_player)
   boardmap = np.zeros(board_matrix.shape)
   for move in valid_moves:
     if move is None:
@@ -618,7 +654,12 @@ def determine_owner_of_free_space(board_matrix, spot_tuple):
 
 
 
-
+def determine_owner_of_any_space(board_matrix, spot_tuple):
+  if not spot_is_open(board_matrix, spot_tuple):
+    return get_value_for_spot(board_matrix, spot_tuple)
+  else:
+    owner = determine_owner_of_free_space(board_matrix, spot_tuple)
+    return owner
 
 
 
@@ -636,6 +677,15 @@ have only one eye. No, because as I said before, if you have something like that
 then the games will continue until they're full up.
 """
 
+def output_score_map(current_board):
+  board_copy = copy(current_board)
+  score_map = np.zeros(current_board.shape)
+
+  for tup in move_tuples_on_board(board_copy):
+    owner = determine_owner_of_any_space(board_copy, tup)
+    set_value_for_spot(score_map, tup, owner)
+  return score_map
+
 
 
 def score_board(current_board):
@@ -651,6 +701,12 @@ def score_board(current_board):
   Why stop early if you have infinite patience?
   """
   board_copy = copy(current_board)
+  if board_is_empty(current_board):
+    return {
+    'pos' : 0,
+    'neg' : 0
+  }
+
   for tup in move_tuples_on_board(board_copy):
     if spot_is_open(board_copy, tup):
       owner = determine_owner_of_free_space(board_copy, tup)
@@ -700,17 +756,19 @@ def generate_random_board(board_shape, total_moves):
   Generates random board, starting with black's move.
   Returns the generated board, plus the person who gets to move next.
   """
-  last_board = np.zeros(board_shape)
+  all_previous_boards = []
+  # last_board = np.zeros(board_shape)
   current_board = np.zeros(board_shape)
   next_turn = 1
   for i in xrange(total_moves):
-    valid_moves = output_all_valid_moves(current_board, last_board, next_turn)
+    valid_moves = output_all_valid_moves(current_board, all_previous_boards, next_turn)
     if len(valid_moves) == 0:
       print "Looks like we got stuck at some point, try simulating less far."
       return None, None
     valid_move = random.choice(list(valid_moves))
     new_board = update_board_from_move(current_board, valid_move, next_turn)
-    last_board = current_board
+    # last_board = current_board
+    all_previous_boards.append(current_board)
     current_board = new_board
     next_turn = next_turn * -1
   return current_board, next_turn
@@ -721,7 +779,7 @@ if __name__ == '__main__':
   random_board, start = generate_random_board((5,5),10)
   print random_board
   for i in range(10):
-    print output_one_valid_move(random_board, random_board, start)
+    print output_one_valid_move(random_board, [], start)
   # print output_one_valid_move(random_board, random_board, start)
   # print output_one_valid_move(random_board, random_board, start)
   # print output_one_valid_move(random_board, random_board, start)
