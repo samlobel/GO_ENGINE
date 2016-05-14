@@ -210,3 +210,12 @@ You play a game from start to finish, on-policy (with some temperature).
 If you win,
 
 
+
+## TO DO TOMORROW 
+I need to write something that will continuously simulate, and do rounds.
+It should be 100 games per round, against a random opponent. I can have a file
+in each folder that tells you the latest bout that's been successful.
+And that's that!  
+
+
+

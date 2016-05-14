@@ -510,15 +510,15 @@ class Convbot_NINE_PURE_POLICY(GoBot):
     all_training_masks = np.asarray(all_training_masks, dtype=np.float32).reshape((-1, BOARD_SIZE*BOARD_SIZE+1))
     all_output_goals = np.asarray(all_output_goals, dtype=np.float32).reshape((-1, BOARD_SIZE*BOARD_SIZE+1))
 
-    print("Finally, created all of the inputs. Who knows if they are \
-      right though. Will print in the beginning to make sure.")
+    # print("Finally, created all of the inputs. Who knows if they are \
+    #   right though. Will print in the beginning to make sure.")
 
-    print("inputs: ")
-    print(all_inputs)
-    print('training masks: ')
-    print(all_training_masks)
-    print('output_goals')
-    print(all_output_goals)
+    # print("inputs: ")
+    # print(all_inputs)
+    # print('training masks: ')
+    # print(all_training_masks)
+    # print('output_goals')
+    # print(all_output_goals)
     # print("screw it, I'm going to learn from them here too.")
 
     return all_inputs, all_training_masks, all_output_goals
@@ -1010,6 +1010,7 @@ def play_game(load_data_1, load_data_2):
   "assign randomly who is who"
   p1 = (int(random.random() > 0.5) * 2) - 1 #That should generate 0/1, transform to 0/2, shift to -1,1
   p2 = -1 * p1
+  print("training player playing as " + str(p1))
 
   player_dict = {
     p1 : convbot_one,
@@ -1031,13 +1032,19 @@ def play_game(load_data_1, load_data_2):
     all_moves.append(this_move)
     all_previous_boards.append(current_board)
     current_board = new_board
-  print("this should print right after 'Game is over!'")
+  print("Game lasted for " + str(len(all_moves)) + " turns.")
   winner = util.determine_winner(current_board)
+  if winner == p1:
+    print("p1 won!")
+  else:
+    print("p2 won!")
 
   convbot_one.learn_from_for_results_of_game(all_previous_boards, all_moves, p1, winner)
   print("convbot_one has been taught")
   convbot_one.save_in_next_slot()
   print("convbot_one has been saved")
+  convbot_one.sess.close()
+  convbot_two.sess.close()
 
 
 
@@ -1067,6 +1074,50 @@ def create_random_starters_for_folder(folder_name):
 
 
 
+def get_largest_batch_in_folder(f_name):
+  folder = os.path.join(this_dir, 'saved_models', 'only_policy_convnet')
+  filename = os.path.join(folder, f_name,'largest.txt')
+  f = open(filename, 'r')
+  content = f.read()
+  content = content.strip()
+  latest = int(content)
+  f.close()
+  return latest
+
+
+def set_largest_batch_in_folder(f_name, batch_num):
+  folder = os.path.join(this_dir, 'saved_models', 'only_policy_convnet')
+  filename = os.path.join(folder, f_name,'largest.txt')
+  f = open(filename, 'w')
+  f.write(str(batch_num))
+  f.close()
+
+
+
+def continuously_train():
+  global saver
+  games_per_folder = 15
+  folders = ['1','2','3','4','5']
+  while True:
+    for f_name in folders:
+      print('re-initializing saver')
+      saver = tf.train.Saver(#var_list=relavent_variables, 
+        max_to_keep=MAX_TO_KEEP,
+        keep_checkpoint_every_n_hours = KEEP_CHECKPOINT_EVERY_N_HOURS,
+        name=prefixize("saver"))
+      print("training folder: " + f_name)
+      largest_batch = get_largest_batch_in_folder(f_name)
+      other_folders = set([f for f in folders if f != f_name])
+      count = 0
+      for other_f in other_folders:
+        print("folder " + f_name + " playing folder " + other_f)
+        largest_other_batch = get_largest_batch_in_folder(other_f)
+        for game in xrange(games_per_folder):
+          b1 = largest_batch + count
+          play_game((f_name, b1), (other_f, largest_other_batch))
+          count += 1
+      set_largest_batch_in_folder(f_name, (largest_batch + count))
+      print("Moving on to the next folder.")
 
 
 
@@ -1075,15 +1126,32 @@ def create_random_starters_for_folder(folder_name):
 
 if __name__ == '__main__':
   # for i in range(1,6):
-  #   create_random_starters_for_folder(str(i))
-  f1 = "1"
-  f2 = "2"
-  b1 = 1
-  b2 = 1
-  for i in range(50):
-    print("playing game " + str(i))
-    play_game((f1,b1),(f2,b2))
-    b1 += 1
+  # create_random_starters_for_folder("1")
+  continuously_train()
+
+
+
+
+
+  # times = 100
+  # lower_folder = 0
+  # round_num = 0
+  # while True:
+  #   f1 = (lower_folder + 1) % 5
+  #   f2 = (lower_folder + 2) % 5
+
+
+
+  # for i in 
+  # for i in range()
+  # f1 = "1"
+  # f2 = "1"
+  # b1 = 704
+  # b2 = 461
+  # for i in range(500):
+  #   print("playing game " + str(i))
+  #   play_game((f1,b1),(f2,b2))
+  #   b1 += 1
   
   # print("training!")
   # automate_testing(0)

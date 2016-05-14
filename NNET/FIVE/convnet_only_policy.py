@@ -562,7 +562,7 @@ class Convbot_FIVE_POLICY_FEATURES(GoBot):
 
     while not ((len(move_list) >= 2) and (move_list[-1] is None) and (move_list[-2] is None)):
       # print ("move: " + str(len(move_list)))
-      if len(move_list) > 100:
+      if len(move_list) > 200:
         print("simulation lasted more than 100 moves")
         return None
       on_policy_move = self.from_board_to_on_policy_move(board_matrix, GLOBAL_TEMPERATURE, previous_board, current_turn)
