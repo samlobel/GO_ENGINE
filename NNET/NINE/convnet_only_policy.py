@@ -423,7 +423,10 @@ class Convbot_NINE_PURE_POLICY(GoBot):
     if desired_index == -1:
       print(legal_move_output_probs)
       print(prob_sum)
-      raise Exception("for some reason, prob_sum did not catch random_number")
+      print("for some reason, prob_sum did not catch random_number")
+      desired_index = BOARD_SIZE*BOARD_SIZE #Just put it at none, because that will
+      # always be legal.
+      # raise Exception("for some reason, prob_sum did not catch random_number")
 
     tup = from_index_to_move_tuple(desired_index)
     return tup
