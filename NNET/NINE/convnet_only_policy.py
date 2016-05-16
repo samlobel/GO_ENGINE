@@ -326,7 +326,7 @@ class Convbot_NINE_PURE_POLICY(GoBot):
       self.folder_name = folder_name
       self.batch_num = batch_num
       load_path = make_path_from_folder_and_batch_num(folder_name, batch_num)
-      print("initializing from path: " + str(load_path))
+      # print("initializing from path: " + str(load_path))
       saver.restore(self.sess, load_path)
 
       
@@ -346,7 +346,7 @@ class Convbot_NINE_PURE_POLICY(GoBot):
     save_batch = load_batch + 1
     save_path = make_path_from_folder_and_batch_num(self.folder_name, save_batch)
     saver.save(self.sess, save_path)
-    print("Model saved to path: " + str(save_path))
+    # print("Model saved to path: " + str(save_path))
     return self.folder_name, save_batch
 
 
@@ -571,6 +571,15 @@ class Convbot_NINE_PURE_POLICY(GoBot):
       softmax_output_goal_policy : all_output_goals
     })
     print("trained!")
+    print("error on this one: ")
+    print(
+      self.sess.run(mean_square_policy, feed_dict={
+        x_policy : all_inputs,
+        softmax_temperature_policy : GLOBAL_TEMPERATURE,
+        training_mask_policy : all_training_masks,
+        softmax_output_goal_policy : all_output_goals
+      })
+    )
 
 
 
@@ -1067,7 +1076,7 @@ def play_game(load_data_1, load_data_2):
     print("p2 won!")
 
   convbot_one.learn_from_for_results_of_game(all_previous_boards, all_moves, p1, winner)
-  print("convbot_one has been taught")
+  # print("convbot_one has been taught")
   convbot_one.save_in_next_slot()
   print("convbot_one has been saved")
   convbot_one.sess.close()
