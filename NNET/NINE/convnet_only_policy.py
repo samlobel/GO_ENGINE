@@ -1097,13 +1097,15 @@ def create_random_starters_for_folder(folder_name):
   new_cb.save_in_next_slot()
   print("random starter created and saved")
   set_largest_batch_in_folder(folder_name, 1)
+  new_cb.sess.close()
 
 def create_random_starters_for_folders(folder_name_list):
   for fn in folder_name_list:
     full_folder = os.path.join(this_dir, 'saved_models', 'only_policy_convnet', fn)
+    print(full_folder)
     try:
-      os.path.makedirs(full_folder)
-    except e:
+      os.makedirs(full_folder)
+    except Exception:
       print("looks like folder with name: " + str(fn) + " already exists")
   for fn in folder_name_list:
     create_random_starters_for_folder(fn)
