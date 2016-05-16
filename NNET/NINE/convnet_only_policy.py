@@ -1100,6 +1100,12 @@ def create_random_starters_for_folder(folder_name):
 
 def create_random_starters_for_folders(folder_name_list):
   for fn in folder_name_list:
+    full_folder = os.path.join(this_dir, 'saved_models', 'only_policy_convnet', fn)
+    try:
+      os.path.makedirs(full_folder)
+    except e:
+      print("looks like folder with name: " + str(fn) + " already exists")
+  for fn in folder_name_list:
     create_random_starters_for_folder(fn)
   print('all created')
 
