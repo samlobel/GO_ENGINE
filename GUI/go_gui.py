@@ -219,7 +219,7 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      self.board_metadata['black_AI'] = Convbot_NINE_PURE_POLICY(folder_name="1", batch_num=361)
+      self.board_metadata['black_AI'] = Convbot_NINE_PURE_POLICY(folder_name="1", batch_num=1801)
       # Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_6820_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       

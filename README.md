@@ -218,4 +218,7 @@ in each folder that tells you the latest bout that's been successful.
 And that's that!  
 
 
+I'm not POSITIVE, but I think the problem is that it's training it to pass early on. Maybe I should make passing illegal in the beginning some turns of the game. Man, I wish I could find a good answer for sensible moves. This stinks. I wish there was an easy way to determine where bad moves are.
+
+
 

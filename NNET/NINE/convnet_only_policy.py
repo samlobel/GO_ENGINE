@@ -365,7 +365,7 @@ class Convbot_NINE_PURE_POLICY(GoBot):
   def get_best_move(self, board_matrix, all_previous_boards, current_turn):
 
     if (board_matrix is None) or not (current_turn in (-1,1)):
-      raise Exception("Invalid inputs to from_board_to_on_policy_move.")
+      raise Exception("Invalid inputs to get_best_move.")
 
     valid_moves_mask = util.output_valid_moves_mask(board_matrix, all_previous_boards, current_turn)
     # print(valid_moves_mask)
@@ -399,14 +399,32 @@ class Convbot_NINE_PURE_POLICY(GoBot):
 
     valid_moves_mask = util.output_valid_moves_mask(board_matrix, all_previous_boards, current_turn)
     valid_moves_mask = valid_moves_mask.reshape([1, BOARD_SIZE*BOARD_SIZE+1])    
+    print(valid_moves_mask)
 
     board_input = self.board_to_input_transform_policy(board_matrix, all_previous_boards, current_turn)
+    print(board_input)
+
+    
+    
+    # toPrint = [softmax_output_policy, legal_softmax_output_policy, sum_of_legal_probs_policy, normalized_legal_softmax_output_policy, h_fc1_policy, h_conv5_flat_policy]
+    toPrint = [h_conv1_policy, h_conv2_policy, h_conv3_policy, h_conv4_policy]
+    print('printing along the way: ')
+    print(
+      self.sess.run(toPrint, feed_dict={
+        x_policy : board_input,
+        softmax_temperature_policy : GLOBAL_TEMPERATURE,
+        legal_moves_mask_policy : valid_moves_mask
+      })
+    )
+    print('printed')
 
     legal_move_output_probs = self.sess.run(normalized_legal_softmax_output_policy, feed_dict={
       x_policy : board_input,
       softmax_temperature_policy : GLOBAL_TEMPERATURE,
       legal_moves_mask_policy : valid_moves_mask
     })
+
+
 
     legal_move_output_probs = legal_move_output_probs[0]
 
@@ -532,8 +550,10 @@ class Convbot_NINE_PURE_POLICY(GoBot):
     # print("training on game:")
     # print('all inputs shape:')
     # print(all_inputs.shape)
-    # print('all_training_masks shape:')
-    # print(all_training_masks.shape)
+    print('all training masks:')
+    print(all_training_masks)
+    print('all_training_masks shape:')
+    print(all_training_masks.shape)
     # print('all_output_goals shape')
     # print(all_output_goals.shape)
     # softmax_output_policy_result = self.sess.run(softmax_output_policy, feed_dict={
@@ -1029,12 +1049,16 @@ def play_game(load_data_1, load_data_2):
       print("Game is over!")
       break
     bot_up = player_dict[current_turn]
+    print(current_board)
+    print(all_previous_boards)
+    print(current_turn)
     this_move = bot_up.from_board_to_on_policy_move(current_board, all_previous_boards, current_turn)
     new_board = util.update_board_from_move(current_board, this_move, current_turn)
 
     all_moves.append(this_move)
     all_previous_boards.append(current_board)
     current_board = new_board
+    current_turn *= -1
   print("Game lasted for " + str(len(all_moves)) + " turns.")
   winner = util.determine_winner(current_board)
   if winner == p1:
@@ -1180,4 +1204,4 @@ if __name__ == '__main__':
 
 
 
-
+  
