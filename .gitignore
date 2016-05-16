@@ -3,3 +3,4 @@ venv/*
 saved_models
 .DS_STORE
 nohup.out
+*.zip

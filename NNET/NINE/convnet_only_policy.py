@@ -1096,6 +1096,12 @@ def create_random_starters_for_folder(folder_name):
   new_cb = Convbot_NINE_PURE_POLICY(folder_name=folder_name, batch_num=0)
   new_cb.save_in_next_slot()
   print("random starter created and saved")
+  set_largest_batch_in_folder(folder_name, 1)
+
+def create_random_starters_for_folders(folder_name_list):
+  for fn in folder_name_list:
+    create_random_starters_for_folder(fn)
+  print('all created')
 
 
 
