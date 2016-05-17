@@ -618,7 +618,7 @@ def output_valid_moves_mask(board_matrix, all_previous_boards, current_player):
     raise Exception("I dont really know how to handle board_matrix being none in output_valid_moves_boardmap")
   valid_moves = output_all_valid_moves(board_matrix, all_previous_boards, current_player)
   shape = board_matrix.shape
-  move_array = np.zeros(shape[0]*shape[1] +1)
+  move_array = np.zeros(shape[0]*shape[1] +1, dtype=np.float32)
 
   for move in valid_moves:
     index = from_move_tuple_to_index(board_matrix, move)
