@@ -263,8 +263,13 @@ mean_square_policy = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(masked_s
 
 # AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
 # _policy(learning_rate=0.01, momentum=0.9)
-MomentumOptimizer_policy = tf.train.MomentumOptimizer(0.01, 0.9)
-train_step_policy = MomentumOptimizer_policy.minimize(mean_square_policy)
+
+
+# MomentumOptimizer_policy = tf.train.MomentumOptimizer(0.01, 0.9)
+# train_step_policy = MomentumOptimizer_policy.minimize(mean_square_policy)
+
+GDOptimizer_policy = tf.train.GradientDescentOptimizer(0.01)
+train_step_policy = GDOptimizer_policy.minimize(mean_square_policy)
 
 
 
