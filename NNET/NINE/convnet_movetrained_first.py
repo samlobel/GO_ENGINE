@@ -14,6 +14,7 @@ from go_util import util
 
 from copy import deepcopy as copy
 import random
+import json
 
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -25,7 +26,7 @@ TRAIN_OR_TEST = "TRAIN"
 # TRAIN_OR_TEST = "TEST"
 
 
-NAME_PREFIX='ninebot_only_policy_'
+NAME_PREFIX='ninebot_policy_movetrained_'
 
 BOARD_SIZE = 9
 
@@ -35,7 +36,7 @@ NUM_FEATURES = 3
 MAX_TO_KEEP = 2
 KEEP_CHECKPOINT_EVERY_N_HOURS = 0.1
 
-GLOBAL_TEMPERATURE = 1.5 #Since values range from -1 to 1,
+GLOBAL_TEMPERATURE = 1.0 #Since values range from -1 to 1,
             # passing this through softmax with temp "2" will give the
             # difference between best and worst as 2.7 times as likely.
             # That's a pretty damn high temperature. But, it's good,
@@ -45,6 +46,8 @@ GLOBAL_TEMPERATURE = 1.5 #Since values range from -1 to 1,
             # temp 1.5 gives like 5 times.
 
 NUM_POLICY_GAMES_TO_SIMULATE_PER_BOARD = 5
+
+REGULARIZER_CONSTANT = 0.0005
 
 
 """
@@ -259,17 +262,34 @@ masked_softmax_output_policy = tf.mul(softmax_output_policy, training_mask_polic
 # 
 
 mean_square_policy = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(masked_softmax_output_policy, softmax_output_goal_policy), reduction_indices=[1]), name=prefixize("mean_square_policy"))
+l2_loss_layer_1 = tf.nn.l2_loss(W_conv1_policy, name=prefixize('l2_layer1'))
+l2_loss_layer_2 = tf.nn.l2_loss(W_conv2_policy, name=prefixize('l2_layer2'))
+l2_loss_layer_3 = tf.nn.l2_loss(W_conv3_policy, name=prefixize('l2_layer3'))
+l2_loss_layer_4 = tf.nn.l2_loss(W_conv4_policy, name=prefixize('l2_layer4'))
+l2_loss_layer_5 = tf.nn.l2_loss(W_conv5_policy, name=prefixize('l2_layer5'))
+
+
+# tf.contrib.layers.l2_regularizer(REGULARIZER_CONSTANT)#, name=prefixize("r1_policy"))
+# l2_loss_layer_2 = tf.contrib.layers.l2_regularizer(REGULARIZER_CONSTANT)#, name=prefixize("r1_policy"))
+# l2_loss_layer_3 = tf.contrib.layers.l2_regularizer(REGULARIZER_CONSTANT)#, name=prefixize("r1_policy"))
+# l2_loss_layer_4 = tf.contrib.layers.l2_regularizer(REGULARIZER_CONSTANT)#, name=prefixize("r1_policy"))
+# l2_loss_layer_5 = tf.contrib.layers.l2_regularizer(REGULARIZER_CONSTANT)#, name=prefixize("r1_policy"))
+
+l2_error_total = REGULARIZER_CONSTANT * (l2_loss_layer_1 + l2_loss_layer_2 + 
+                l2_loss_layer_3 + l2_loss_layer_4 + l2_loss_layer_5)
+
+total_error = mean_square_policy + l2_error_total
 
 
 # AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
 # _policy(learning_rate=0.01, momentum=0.9)
 
 
-# MomentumOptimizer_policy = tf.train.MomentumOptimizer(0.01, 0.9)
-# train_step_policy = MomentumOptimizer_policy.minimize(mean_square_policy)
+MomentumOptimizer_policy = tf.train.MomentumOptimizer(0.01, 0.1)
+train_step_policy = MomentumOptimizer_policy.minimize(total_error)
 
-GDOptimizer_policy = tf.train.GradientDescentOptimizer(0.01)
-train_step_policy = GDOptimizer_policy.minimize(mean_square_policy)
+# GDOptimizer_policy = tf.train.GradientDescentOptimizer(0.01)
+# train_step_policy = GDOptimizer_policy.minimize(total_error)
 
 
 
@@ -313,7 +333,7 @@ I should be good then too.
 """
 
 
-class Convbot_NINE_PURE_POLICY(GoBot):
+class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
 
   def __init__(self, folder_name=None, batch_num=0):
     GoBot.__init__(self)
@@ -342,6 +362,7 @@ class Convbot_NINE_PURE_POLICY(GoBot):
     load_batch = self.batch_num
     save_batch = load_batch + 1
     save_path = make_path_from_folder_and_batch_num(self.folder_name, save_batch)
+    print(save_path)
     saver.save(self.sess, save_path)
     # print("Model saved to path: " + str(save_path))
     return self.folder_name, save_batch
@@ -370,7 +391,7 @@ class Convbot_NINE_PURE_POLICY(GoBot):
     valid_moves_mask = valid_moves_mask.reshape([1, BOARD_SIZE*BOARD_SIZE +1])    
     print(valid_moves_mask)
 
-    board_input = self.board_to_input_transform_policy(board_matrix, all_previous_boards, current_turn)
+    board_input = board_to_input_transform_policy(board_matrix, all_previous_boards, current_turn)
 
     legal_move_output_probs = self.sess.run(normalized_legal_softmax_output_policy, feed_dict={
       x_policy : board_input,
@@ -398,7 +419,7 @@ class Convbot_NINE_PURE_POLICY(GoBot):
     valid_moves_mask = valid_moves_mask.reshape([1, BOARD_SIZE*BOARD_SIZE+1])    
     # print(valid_moves_mask)
 
-    board_input = self.board_to_input_transform_policy(board_matrix, all_previous_boards, current_turn)
+    board_input = board_to_input_transform_policy(board_matrix, all_previous_boards, current_turn)
     # print(board_input)
 
     # 
@@ -496,7 +517,7 @@ class Convbot_NINE_PURE_POLICY(GoBot):
       valid_moves = util.output_all_valid_moves(board, 
             all_previous_boards_from_this_turn, current_turn)
 
-      board_input = self.board_to_input_transform_policy(
+      board_input = board_to_input_transform_policy(
             board, all_previous_boards_from_this_turn, current_turn)
 
       """
@@ -583,64 +604,69 @@ class Convbot_NINE_PURE_POLICY(GoBot):
   
 
 
-  def board_to_input_transform_value(self, board_matrix, all_previous_boards, current_turn):
-    """
-    I should get this ready for features, but I really don't want to.
-    Remember, this is assuming that it's white's turn? No. For policy,
-    it's black's turn. For value, it's white's turn. I think that means 
-    I should have two of these functions.
-    How can I still not be sure if I have a *-1 error somewhere? That's
-    ridiculous.
+  # def board_to_input_transform_value(self, board_matrix, all_previous_boards, current_turn):
+  #   """
+  #   I should get this ready for features, but I really don't want to.
+  #   Remember, this is assuming that it's white's turn? No. For policy,
+  #   it's black's turn. For value, it's white's turn. I think that means 
+  #   I should have two of these functions.
+  #   How can I still not be sure if I have a *-1 error somewhere? That's
+  #   ridiculous.
 
-    ASSUMES THIS PLAYER IS WHITE. IMPORTANT FOR LEGAL_MOVE MAP.
+  #   ASSUMES THIS PLAYER IS WHITE. IMPORTANT FOR LEGAL_MOVE MAP.
 
-    ACTUALLY, DOESN'T ASSUME THIS. BUT IT DOES TRANSFORM IT SO THAT ITS TRUE.
+  #   ACTUALLY, DOESN'T ASSUME THIS. BUT IT DOES TRANSFORM IT SO THAT ITS TRUE.
 
-    """
-    if current_turn not in (-1,1):
-      raise Exception("current turn must be -1 or 1. instead it is " + str(current_turn))
-    legal_moves_map = util.output_valid_moves_boardmap(board_matrix, all_previous_boards, current_turn)
-    liberty_map = util.output_liberty_map(board_matrix)
+  #   """
+  #   if current_turn not in (-1,1):
+  #     raise Exception("current turn must be -1 or 1. instead it is " + str(current_turn))
+  #   legal_moves_map = util.output_valid_moves_boardmap(board_matrix, all_previous_boards, current_turn)
+  #   liberty_map = util.output_liberty_map(board_matrix)
 
-    feature_array = None
-    if current_turn == -1:
-      feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
-    else:
-      feature_array = np.asarray([-1 *board_matrix, legal_moves_map, -1 * liberty_map])
+  #   feature_array = None
+  #   if current_turn == -1:
+  #     feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
+  #   else:
+  #     feature_array = np.asarray([-1 *board_matrix, legal_moves_map, -1 * liberty_map])
 
-    feature_array = feature_array.T
-    flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
+  #   feature_array = feature_array.T
+  #   flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
     
-    return flattened_input
+  #   return flattened_input
 
-  def board_to_input_transform_policy(self, board_matrix, all_previous_boards, current_turn):
-    """
-    I should get this ready for features, but I really don't want to.
-    Remember, this is assuming that it's white's turn? No. For policy,
-    it's black's turn. For value, it's white's turn. I think that means 
-    I should have two of these functions.
-    How can I still not be sure if I have a *-1 error somewhere? That's
-    ridiculous.
+def board_to_input_transform_policy(board_matrix, all_previous_boards, current_turn):
+  """
+  I should get this ready for features, but I really don't want to.
+  Remember, this is assuming that it's white's turn? No. For policy,
+  it's black's turn. For value, it's white's turn. I think that means 
+  I should have two of these functions.
+  How can I still not be sure if I have a *-1 error somewhere? That's
+  ridiculous.
 
-    ASSUMES THIS PLAYER IS BLACK. IMPORTANT FOR LEGAL_MOVE MAP.
+  ASSUMES THIS PLAYER IS BLACK. IMPORTANT FOR LEGAL_MOVE MAP.
 
-    NOPE, IT DOESN'T. BUT IT TRANSFORMS IT SO THAT THE OUTPUT THINKS IT IS.
-    """
+  NOPE, IT DOESN'T. BUT IT TRANSFORMS IT SO THAT THE OUTPUT THINKS IT IS.
 
-    # current_turn = 1
-    legal_moves_map = util.output_valid_moves_boardmap(board_matrix, all_previous_boards, current_turn)
-    liberty_map = util.output_liberty_map(board_matrix)
+  Why in the world is this a class method when it doesn't use anything from the
+  class? I'm going to make it not-class.
 
-    feature_array = None
-    if current_turn == 1:
-      feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
-    else:
-      feature_array = np.asarray([-1 *board_matrix, legal_moves_map, -1 * liberty_map])
+  """
 
-    feature_array = feature_array.T
-    flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
-    
-    return flattened_input
+  # current_turn = 1
+
+  legal_moves_map = util.output_valid_moves_boardmap(board_matrix, all_previous_boards, current_turn)
+  liberty_map = util.output_liberty_map(board_matrix)
+
+  feature_array = None
+  if current_turn == 1:
+    feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
+  else:
+    feature_array = np.asarray([-1 *board_matrix, legal_moves_map, -1 * liberty_map])
+
+  feature_array = feature_array.T
+  flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
+  
+  return flattened_input
 
 
 
@@ -739,7 +765,7 @@ def play_game(load_data_1, load_data_2):
 
 def create_random_starters_for_folder(folder_name):
   print("creating random starter in folder: " + str(folder_name))
-  new_cb = Convbot_NINE_PURE_POLICY(folder_name=folder_name, batch_num=0)
+  new_cb = Convbot_NINE_POLICY_MOVETRAINED(folder_name=folder_name, batch_num=0)
   new_cb.save_in_next_slot()
   print("random starter created and saved")
   set_largest_batch_in_folder(folder_name, 1)
@@ -781,6 +807,8 @@ def set_largest_batch_in_folder(f_name, batch_num):
 
 
 
+
+
 def continuously_train():
   global saver
   games_per_folder = 25
@@ -808,14 +836,143 @@ def continuously_train():
 
 
 
+def random_board_iterator():
+  with open('./random_boards.txt') as f:
+    while True:
+      to_yield = [f.readline() for i in xrange(100)]
+      if to_yield[-1] == '':
+        print('done with iteration, hit end of file.')
+        # print(to_yield)
+        break
+      to_yield = [json.loads(x.strip()) for x in to_yield]
+      yield to_yield
+  print("exit iterator")
+
+
+# def make_mirror_images(list_of_boards):
+#   # Makes an assumption that it's Nx9x9
+#   to_return = []
+#   for board in list_of_boards:
+#     inverted = [[-1.0 * val for val in row] for row in board]
+#     to_return.append(inverted)
+#   return to_return
+
+def get_inputs_from_boards(boards):
+  to_return = []
+  for board in boards:
+    board_matrix = np.asarray(board, dtype=np.float32)
+    board_input_black = board_to_input_transform_policy(board_matrix, [], 1)
+    board_input_white = board_to_input_transform_policy(board_matrix, [], -1)
+    to_return.append(board_input_black)
+    to_return.append(board_input_white)
+  # There's this weird thing because I make the inputs wrapped, so I need
+  # to take out at part.
+  to_return = [elem[0] for elem in to_return]
+  to_return = np.asarray(to_return, dtype=np.float32)
+  return to_return
+
+def get_output_goals_for_boards(boards):
+  # should be 0 for illegal moves, and 1/len(valid_moves) for legal moves.
+  # I can set it to 0 and 1 everywhere, and then normalize.
+  to_return = []
+  for board in boards:
+    board_matrix = np.asarray(board, dtype=np.float32)
+    valid_move_goal_black = util.output_valid_moves_mask(board_matrix, [], 1)
+    valid_move_goal_white = util.output_valid_moves_mask(board_matrix, [], -1)
+    # black_sum = np.sum(valid_move_goal_black, keep_dims=True)
+    # white_sum = np.sum(valid_move_goal_white, keep_dims=True)
+    normalized_black_goal = valid_move_goal_black / valid_move_goal_black.sum()
+    normalized_white_goal = valid_move_goal_white / valid_move_goal_white.sum()
+    to_return.append(normalized_black_goal)
+    to_return.append(normalized_white_goal)
+  return np.asarray(to_return, dtype=np.float32)
+
+
+def train_on_all_random_boards(f_name):
+  largest = get_largest_batch_in_folder(f_name)
+  convbot = Convbot_NINE_POLICY_MOVETRAINED(folder_name=f_name, batch_num=largest)
+  error_list = []
+  l2_error_list = []
+  for board_list in random_board_iterator():
+    inputs = get_inputs_from_boards(board_list)
+    outputs = get_output_goals_for_boards(board_list)
+    training_mask = np.ones_like(outputs)
+    # The training mask is unneccesarry here, but what it does is say, everything
+    # is in play.
+    print("starting training calculation")
+    l2_err, tot_err, who_cares = convbot.sess.run([l2_error_total, total_error, train_step_policy], feed_dict={
+      x_policy : inputs,
+      softmax_output_goal_policy : outputs,
+      softmax_temperature_policy : GLOBAL_TEMPERATURE,
+      training_mask_policy : training_mask
+    })
+    print("ending training calculation")
+    error_list.append(tot_err)
+    l2_error_list.append(l2_err)
+    print("done with " + str(len(error_list)) + " batches")
+    # print(error_list)
+    # print(l2_error_list)
+    if len(error_list) % 10 == 0:
+      print('error:')
+      print(error_list)
+      same_fname, new_largest = convbot.save_in_next_slot()
+      set_largest_batch_in_folder(same_fname, new_largest)
+      convbot.sess.close()
+      largest = new_largest
+      convbot = Convbot_NINE_POLICY_MOVETRAINED(folder_name=f_name, batch_num=largest)
+
+  
+  print(error_list)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 if __name__ == '__main__':
-  # for i in range(1,6):
-  # create_random_starters_for_folder("1")
+  folder_name = "test"
+  dirpath = os.path.join(this_dir + '/saved_models/only_policy_convnet', folder_name)
+  if not os.path.isdir(dirpath):
+    os.makedirs(dirpath)
+    create_random_starters_for_folder(folder_name)
+  train_on_all_random_boards(folder_name)
+
+  # num = 0
+  # for rbs in random_board_iterator():
+  #   num += 1
+  #   # print("rbs")
+  #   # print(len(rbs))
+  #   # print(len(rbs[0]))
+  #   # print(len(rbs[0][0]))
+  # print(num)
   
-  continuously_train()
+
+  # print(len(list(random_board_iterator())))
+
+  # create_random_starters_for_folder("test")
+  # train_on_all_random_boards("test")
+
+  
+  # continuously_train()
   # print "nothing here for now. Stopped training because."
 
 
