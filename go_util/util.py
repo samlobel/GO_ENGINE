@@ -800,11 +800,14 @@ def generate_random_board(board_shape, total_moves):
   current_board = np.zeros(board_shape)
   next_turn = 1
   for i in xrange(total_moves):
-    valid_moves = output_all_valid_moves(current_board, all_previous_boards, next_turn)
-    if len(valid_moves) == 0:
-      print "Looks like we got stuck at some point, try simulating less far."
-      return None, None
-    valid_move = random.choice(list(valid_moves))
+    if len(all_previous_boards) >= 5:
+      all_previous_boards = all_previous_boards[2:len(all_previous_boards)-1]
+    # valid_moves = output_all_valid_moves(current_board, all_previous_boards, next_turn)
+    # if len(valid_moves) == 0:
+    #   print "Looks like we got stuck at some point, try simulating less far."
+    #   return None, None
+    # valid_move = random.choice(list(valid_moves))
+    valid_move = output_one_valid_move(current_board, all_previous_boards, next_turn)
     new_board = update_board_from_move(current_board, valid_move, next_turn)
     # last_board = current_board
     all_previous_boards.append(current_board)
