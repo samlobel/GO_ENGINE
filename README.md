@@ -239,3 +239,14 @@ sort of adding noise.
 Anyway, I think that it's important to not have 
 
 What else? I would like to see whether I can reduce the error on just one of them very low. Maybe run it a lot of times on the same thing, until it converges or something 
+
+
+
+Looks like changing the initialization, as well as running it MANY times on the same thing (to avoid excess computation), sealed the deal.
+
+Once this is done, I think I want to use one of them right when it starts getting really good. I don't want to over-train on rules, after all.
+
+I'll use a few different ones as seeds, and then I'll put them through my random training. The difference being, I'm going to do the same thing as above, considering
+that playing the games is SO by far the most time-consuming part. It might even be good
+to not just save the game_state, but to save all of the inputs.
+

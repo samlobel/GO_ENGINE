@@ -193,6 +193,28 @@ one wherever a move is ILLEGAL, and also 1 wherever you actually went.
 The reason for this is, where this is 1, the optimizer will have access to the 
 underlying things, and therefore will optimizer parameters. Where it is zero,
 the optimizer can ignore. It's very nice that these things are so smart.
+NOTE:::: I'm changing my thoughts on this, because it should already know the
+rules, more or less. I should train it on everything, always, and then set the
+softmax_output_goal_policy to be : if it WON, 1 at the move it did and 0 elsewhere.
+if it lost, I think I should just smooth it out a little. Send it to the average
+over all legal moves. It would be better if I could send it to the average over
+all legal moves except the one it chose, but that's probably unneccesarry.
+The only problem I see with this is, half the time, you're training it
+to not recognize anything, and that's pretty shitty, cause it's already
+REALLY good at that. Shouldn't matter in the long-run, but it won't be good in
+the short-run. If I lost, I would just want to go in the opposite direction of
+winning. Maybe, that means that I need to minimize the negative of the old error.
+That would definitely do what I want it to. It does seem a little shitty though that
+it's going to smooth everything out, because it will push error to illegal moves.
+So, even though it seems like a great idea, I'm not a fan.
+
+Maybe, what I should do is (if I lose), get the output, set the index to 0
+that we want to minimize, set everything to zero that is illegal, renormalize,
+and then make that the target. Nice, that pushes the probability from the move
+you took to everywhere that is legal except it. It would be nice if I didn't
+have to have two separate training procedures, but whatever whatever.
+
+
 
 softmax_output_goal_policy: This is the goal of what you want to acheive. It
 really only matters at locations that the training_mask_policy is 1. You should
@@ -507,7 +529,27 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
 
     I've gotta do the whole game at once, there's no way around it.
 
+    The only problem with the 'new' way of making the desired output is,
+    I need to have the output probability for each step of the game.
+
     """
+    
+    """
+    SO, NEW PLAN:
+    Go through, calculate all outputs that the guy made (when it was his turn).
+    Then, if it was a loss:
+      set all of the spots to zero that are illegal, and set to zero the spot
+      that made you lose. Then, renormalize. That's your goal.
+
+    """
+
+
+    if len(all_boards_list) != len(all_moves_list):
+      raise Exception("Should pass in one board per move.")
+
+
+
+
     set_target_to = None
     if this_player == player_who_won:
       set_target_to = 1.0
@@ -542,7 +584,14 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
       """
       Training mask: I want the invalid moves to show through, as well
       as the single move that we care about. I don't care what it does
-      to the other valid moves, I have no info on them
+      to the other valid moves, I have no info on them.
+
+
+      IMPORTANT! NOW THAT I'VE TRAINED IT TO RECOGNIZE VALID MOVES,
+      IT DOESN'T REALLY MAKE SENSE TO DILUTE TRAINING BY ALSO RE-LEARNING
+      WHAT IS A VALID MOVE.
+
+      I THINK A MORE 
       """ 
 
       training_mask_policy = np.ones(BOARD_SIZE*BOARD_SIZE+1, dtype=np.float32)
@@ -582,7 +631,7 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
     return all_inputs, all_training_masks, all_output_goals
 
 
-  def learn_from_for_results_of_game(self, all_boards_list, all_moves_list, this_player, player_who_won):
+  def learn_from_for_results_of_game(self, all_boards_list, all_moves_list, this_player, player_who_won, num_times_to_train=25):
     all_inputs, all_training_masks, all_output_goals = self.create_inputs_to_learn_from_for_results_of_game(all_boards_list, all_moves_list, this_player, player_who_won)
     # print("training on game:")
     # print('all inputs shape:')
@@ -601,16 +650,17 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
     # })
     # print('softmax_output_policy shape: ')
     # print(softmax_output_policy_result.shape)
-    self.sess.run(train_step_policy, feed_dict={
-      x_policy : all_inputs,
-      softmax_temperature_policy : GLOBAL_TEMPERATURE,
-      training_mask_policy : all_training_masks,
-      softmax_output_goal_policy : all_output_goals
-    })
+    for i in xrange(num_times_to_train):
+      self.sess.run(train_step_policy, feed_dict={
+        x_policy : all_inputs,
+        softmax_temperature_policy : GLOBAL_TEMPERATURE,
+        training_mask_policy : all_training_masks,
+        softmax_output_goal_policy : all_output_goals
+      })
     print("trained!")
     print("error on this one: ")
     print(
-      self.sess.run(mean_square_policy, feed_dict={
+      self.sess.run(total_error, feed_dict={
         x_policy : all_inputs,
         softmax_temperature_policy : GLOBAL_TEMPERATURE,
         training_mask_policy : all_training_masks,
@@ -710,6 +760,11 @@ def play_game(load_data_1, load_data_2):
   We're going to simulate a game between the two of them, storing
   all of the boards and all of the moves that occur. 
   Then, we'll update the GO board using the function I wrote for that purpose.
+
+  An update I think will REALLY help: By far the most time-consuming part of this
+  whole thing is playing the game. So, after I get the results of the game,
+  I'll train may times on them.
+
   """
 
   folder_1, batch_num_1 = load_data_1 
@@ -718,8 +773,8 @@ def play_game(load_data_1, load_data_2):
   # load_path_1 = make_path_from_folder_and_batch_num(folder_1, batch_num_1)
   # load_path_2 = make_path_from_folder_and_batch_num(folder_2, batch_num_2)
 
-  convbot_one = Convbot_NINE_PURE_POLICY(folder_name=folder_1, batch_num=batch_num_1)
-  convbot_two = Convbot_NINE_PURE_POLICY(folder_name=folder_2, batch_num=batch_num_2)
+  convbot_one = Convbot_NINE_POLICY_MOVETRAINED(folder_name=folder_1, batch_num=batch_num_1)
+  convbot_two = Convbot_NINE_POLICY_MOVETRAINED(folder_name=folder_2, batch_num=batch_num_2)
 
   "assign randomly who is who"
   p1 = (int(random.random() > 0.5) * 2) - 1 #That should generate 0/1, transform to 0/2, shift to -1,1
@@ -757,7 +812,7 @@ def play_game(load_data_1, load_data_2):
   else:
     print("p2 won!")
 
-  convbot_one.learn_from_for_results_of_game(all_previous_boards, all_moves, p1, winner)
+  convbot_one.learn_from_for_results_of_game(all_previous_boards, all_moves, p1, winner, num_times_to_train=25)
   # print("convbot_one has been taught")
   convbot_one.save_in_next_slot()
   print("convbot_one has been saved")
@@ -1062,13 +1117,16 @@ def test_move_accuracy(f_name, batch=None):
 
 
 if __name__ == '__main__':
-  folder_name = "test_lotsonone"
-  dirpath = os.path.join(this_dir + '/saved_models/only_policy_convnet', folder_name)
-  if not os.path.isdir(dirpath):
-    os.makedirs(dirpath)
-    create_random_starters_for_folder(folder_name)
-  # train_on_all_random_boards(folder_name)
-  train_on_each_batch_lots(folder_name)
+  continuously_train()
+
+
+  # folder_name = "test_lotsonone"
+  # dirpath = os.path.join(this_dir + '/saved_models/only_policy_convnet', folder_name)
+  # if not os.path.isdir(dirpath):
+  #   os.makedirs(dirpath)
+  #   create_random_starters_for_folder(folder_name)
+  # # train_on_all_random_boards(folder_name)
+  # train_on_each_batch_lots(folder_name)
 
 
   # test_move_accuracy("test_lotsonone", batch=601)
