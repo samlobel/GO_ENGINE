@@ -4,3 +4,4 @@ saved_models
 .DS_STORE
 nohup.out
 *.zip
+*.out

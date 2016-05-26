@@ -222,4 +222,20 @@ I'm not POSITIVE, but I think the problem is that it's training it to pass early
 
 It would REALLY help to know when to pass.
 
+##### TO OUTLINE
+What I need to do once I've learned the moves: I'm going to take things from
+various points along its development as seeds for five other folders. Then, I'll
+use those (all of them know the rules of GO) and train those in the round robin
+I had before. Together, it should learn how to play better. I should probably do that manually.
 
+Great trick: use python -u to not buffer for printing.
+
+
+I think one problem is that the weights I've been using are strictly positive, which means that the negative valued-inputs are just making the relu DIE! So, I need to change my initialization scheme. How about I do random, centered at zero?
+
+
+And maybe the answer is, don't worry at all about predicting legal moves, because in some way it'll just do the best move anyway. But I don't like that, because it's
+sort of adding noise.
+Anyway, I think that it's important to not have 
+
+What else? I would like to see whether I can reduce the error on just one of them very low. Maybe run it a lot of times on the same thing, until it converges or something 

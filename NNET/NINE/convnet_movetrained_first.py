@@ -47,7 +47,7 @@ GLOBAL_TEMPERATURE = 1.0 #Since values range from -1 to 1,
 
 NUM_POLICY_GAMES_TO_SIMULATE_PER_BOARD = 5
 
-REGULARIZER_CONSTANT = 0.0005
+REGULARIZER_CONSTANT = 0.0001
 
 
 """
@@ -120,15 +120,31 @@ def from_move_tuple_to_index(tup):
 
 
 def weight_variable(shape, suffix):
+  num_in = None
+  num_out = None
+  if len(shape) == 4:
+    # conv
+    num_in  = shape[0]*shape[1]*shape[2]
+    num_out = shape[0]*shape[1]*shape[3]
+  elif len(shape) == 2:
+    num_in = shape[0]
+    num_out = shape[1]
+  else:
+    raise Exception('shape should be either 0 or 2!')
+
+  stddev_calc = (2.0 / (num_in + num_out))
+  print("std_dev for weights is " + str(stddev_calc))
+
   if suffix is None or type(suffix) is not str:
     raise Exception("bad weight initialization")
-  initial = tf.truncated_normal(shape, stddev=0.1)
+  initial = tf.random_normal(shape, mean=0.0, stddev=stddev_calc)
+  
   return tf.Variable(initial, name=prefixize(suffix))
 
 def bias_variable(shape, suffix):
   if suffix is None or type(suffix) is not str:
     raise Exception("bad bias initialization")  
-  initial = tf.constant(0.1, shape=shape)
+  initial = tf.constant(0.0, shape=shape)
   return tf.Variable(initial, name=prefixize(suffix))
 
 
@@ -285,8 +301,11 @@ total_error = mean_square_policy + l2_error_total
 # _policy(learning_rate=0.01, momentum=0.9)
 
 
-MomentumOptimizer_policy = tf.train.MomentumOptimizer(0.01, 0.1)
-train_step_policy = MomentumOptimizer_policy.minimize(total_error)
+# MomentumOptimizer_policy = tf.train.MomentumOptimizer(0.01, 0.1)
+# train_step_policy = MomentumOptimizer_policy.minimize(total_error)
+
+AdamOptimizer = tf.train.AdamOptimizer(1e-4)
+train_step_policy = AdamOptimizer.minimize(total_error)
 
 # GDOptimizer_policy = tf.train.GradientDescentOptimizer(0.01)
 # train_step_policy = GDOptimizer_policy.minimize(total_error)
@@ -883,46 +902,140 @@ def get_output_goals_for_boards(boards):
     # white_sum = np.sum(valid_move_goal_white, keep_dims=True)
     normalized_black_goal = valid_move_goal_black / valid_move_goal_black.sum()
     normalized_white_goal = valid_move_goal_white / valid_move_goal_white.sum()
+    # print("normalized moves, to make sure its not all zeros or something crazy.")
+    # print(normalized_black_goal)
     to_return.append(normalized_black_goal)
     to_return.append(normalized_white_goal)
   return np.asarray(to_return, dtype=np.float32)
 
 
-def train_on_all_random_boards(f_name):
+# def train_on_all_random_boards(f_name):
+#   largest = get_largest_batch_in_folder(f_name)
+#   convbot = Convbot_NINE_POLICY_MOVETRAINED(folder_name=f_name, batch_num=largest)
+#   error_list = []
+#   l2_error_list = []
+#   for board_list in random_board_iterator():
+#     inputs = get_inputs_from_boards(board_list)
+#     outputs = get_output_goals_for_boards(board_list)
+#     training_mask = np.ones_like(outputs)
+#     # The training mask is unneccesarry here, but what it does is say, everything
+#     # is in play.
+#     print("starting training calculation")
+#     l2_err, tot_err, who_cares = convbot.sess.run([l2_error_total, total_error, train_step_policy], feed_dict={
+#       x_policy : inputs,
+#       softmax_output_goal_policy : outputs,
+#       softmax_temperature_policy : GLOBAL_TEMPERATURE,
+#       training_mask_policy : training_mask
+#     })
+#     print("ending training calculation")
+#     error_list.append(tot_err)
+#     l2_error_list.append(l2_err)
+#     print("done with " + str(len(error_list)) + " batches")
+#     # print(error_list)
+#     # print(l2_error_list)
+#     if len(error_list) % 10 == 0:
+#       print('error:')
+#       print(error_list)
+#       same_fname, new_largest = convbot.save_in_next_slot()
+#       set_largest_batch_in_folder(same_fname, new_largest)
+#       convbot.sess.close()
+#       largest = new_largest
+#       convbot = Convbot_NINE_POLICY_MOVETRAINED(folder_name=f_name, batch_num=largest)
+
+  
+#   print(error_list)
+
+
+def train_on_each_batch_lots(f_name):
+  """
+  Obviously this isn't perfect, but the reason I do it is because most
+  of the time spent training is calculating the inputs and outputs, in lieu of
+  storing them, I do this.
+
+  What I COULD do if I wanna be fancy is prioritized experience replay.
+  """
   largest = get_largest_batch_in_folder(f_name)
   convbot = Convbot_NINE_POLICY_MOVETRAINED(folder_name=f_name, batch_num=largest)
   error_list = []
   l2_error_list = []
+  num = 0
   for board_list in random_board_iterator():
     inputs = get_inputs_from_boards(board_list)
     outputs = get_output_goals_for_boards(board_list)
     training_mask = np.ones_like(outputs)
     # The training mask is unneccesarry here, but what it does is say, everything
     # is in play.
+    for i in range(50):
+      num += 1
+      # print("starting training calculation")
+      l2_err, tot_err, who_cares = convbot.sess.run([l2_error_total, total_error, train_step_policy], feed_dict={
+        x_policy : inputs,
+        softmax_output_goal_policy : outputs,
+        softmax_temperature_policy : GLOBAL_TEMPERATURE,
+        training_mask_policy : training_mask
+      })
+      # print("ending training calculation")
+      # error_list.append(tot_err)
+      # l2_error_list.append(l2_err)
+      
+      # print(error_list)
+      # print(l2_error_list)
+      if num % 10 == 0:
+        print("done with " + str(num) + " batches")
+        error_list.append(tot_err)
+        l2_error_list.append(l2_err)
+        print('error:')
+        print(error_list)
+        # print('l2_error: ')
+        # print(l2_error_list)
+        same_fname, new_largest = convbot.save_in_next_slot()
+        set_largest_batch_in_folder(same_fname, new_largest)
+        convbot.sess.close()
+        largest = new_largest
+        print("one that just printed is " + str(largest - 1))
+        convbot = Convbot_NINE_POLICY_MOVETRAINED(folder_name=f_name, batch_num=largest)
+      if len(error_list) > 200:
+        print('shortening error lists')
+        error_list = error_list[0::2]
+        l2_error_list = l2_error_list[0::2]
+
+  print(error_list)
+
+
+def test_move_accuracy(f_name, batch=None):
+  if batch is None:
+    batch = get_largest_batch_in_folder(f_name)
+  # largest = get_largest_batch_in_folder(f_name)
+  convbot = Convbot_NINE_POLICY_MOVETRAINED(folder_name=f_name, batch_num=batch)
+
+  for board_list in random_board_iterator():
+    inputs = get_inputs_from_boards(board_list)
+    print(inputs[80])
+    outputs = get_output_goals_for_boards(board_list)
+    training_mask = np.ones_like(outputs)
+    # The training mask is unneccesarry here, but what it does is say, everything
+    # is in play.
     print("starting training calculation")
-    l2_err, tot_err, who_cares = convbot.sess.run([l2_error_total, total_error, train_step_policy], feed_dict={
+    softmax_output, l2_err, tot_err = convbot.sess.run([softmax_output_policy, l2_error_total, total_error], feed_dict={
       x_policy : inputs,
       softmax_output_goal_policy : outputs,
       softmax_temperature_policy : GLOBAL_TEMPERATURE,
       training_mask_policy : training_mask
     })
-    print("ending training calculation")
-    error_list.append(tot_err)
-    l2_error_list.append(l2_err)
-    print("done with " + str(len(error_list)) + " batches")
-    # print(error_list)
-    # print(l2_error_list)
-    if len(error_list) % 10 == 0:
-      print('error:')
-      print(error_list)
-      same_fname, new_largest = convbot.save_in_next_slot()
-      set_largest_batch_in_folder(same_fname, new_largest)
-      convbot.sess.close()
-      largest = new_largest
-      convbot = Convbot_NINE_POLICY_MOVETRAINED(folder_name=f_name, batch_num=largest)
+    # print('first 10 outputs')
+    # print(outputs[0:10])
+    # print('first 10 produced outputs')
+    # print(softmax_output[0:10])
+    outputs_zipped = zip(outputs[80:90],softmax_output[80:90])
+    print('printing zipped:')
+    print(outputs_zipped)
 
-  
-  print(error_list)
+
+
+
+
+
+
 
 
 
@@ -949,12 +1062,16 @@ def train_on_all_random_boards(f_name):
 
 
 if __name__ == '__main__':
-  folder_name = "test"
+  folder_name = "test_lotsonone"
   dirpath = os.path.join(this_dir + '/saved_models/only_policy_convnet', folder_name)
   if not os.path.isdir(dirpath):
     os.makedirs(dirpath)
     create_random_starters_for_folder(folder_name)
-  train_on_all_random_boards(folder_name)
+  # train_on_all_random_boards(folder_name)
+  train_on_each_batch_lots(folder_name)
+
+
+  # test_move_accuracy("test_lotsonone", batch=601)
 
   # num = 0
   # for rbs in random_board_iterator():
