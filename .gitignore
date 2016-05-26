@@ -5,3 +5,4 @@ saved_models
 nohup.out
 *.zip
 *.out
+random_boards.txt
