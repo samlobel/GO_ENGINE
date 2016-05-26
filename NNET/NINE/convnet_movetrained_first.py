@@ -981,7 +981,7 @@ def set_largest_batch_in_folder(f_name, batch_num):
 
 def continuously_train():
   global saver
-  games_per_folder = 25
+  games_per_folder = 15
   folders = ['1','2','3','4','5']
   while True:
     for f_name in folders:
