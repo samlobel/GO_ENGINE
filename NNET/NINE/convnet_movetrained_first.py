@@ -229,7 +229,7 @@ softmax_temperature_policy = tf.placeholder(tf.float32, [], name=prefixize('soft
 
 legal_moves_mask_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('legal_moves_mask_policy'))
 
-training_mask_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('training_mask_policy'))
+# training_mask_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('training_mask_policy'))
 softmax_output_goal_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('softmax_output_goal_policy'))
 
 
@@ -296,10 +296,10 @@ normalized_legal_softmax_output_policy = legal_softmax_output_policy / sum_of_le
 # The normalized_legal_softmax_output_policy is the thing you want to
 # return for get_best_move, or for choosing your next move in a game.
 
-masked_softmax_output_policy = tf.mul(softmax_output_policy, training_mask_policy)
+# masked_softmax_output_policy = tf.mul(softmax_output_policy, training_mask_policy)
 # 
 
-mean_square_policy = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(masked_softmax_output_policy, softmax_output_goal_policy), reduction_indices=[1]), name=prefixize("mean_square_policy"))
+mean_square_policy = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(softmax_output_policy, softmax_output_goal_policy), reduction_indices=[1]), name=prefixize("mean_square_policy"))
 l2_loss_layer_1 = tf.nn.l2_loss(W_conv1_policy, name=prefixize('l2_layer1'))
 l2_loss_layer_2 = tf.nn.l2_loss(W_conv2_policy, name=prefixize('l2_layer2'))
 l2_loss_layer_3 = tf.nn.l2_loss(W_conv3_policy, name=prefixize('l2_layer3'))
@@ -434,7 +434,7 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
 
     board_input = board_to_input_transform_policy(board_matrix, all_previous_boards, current_turn)
 
-    legal_move_output_probs = self.sess.run(normalized_legal_softmax_output_policy, feed_dict={
+    legal_move_output_probs, output_policy = self.sess.run([normalized_legal_softmax_output_policy, softmax_output_policy], feed_dict={
       x_policy : board_input,
       softmax_temperature_policy : GLOBAL_TEMPERATURE,
       legal_moves_mask_policy : valid_moves_mask
@@ -442,6 +442,7 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
 
     legal_move_output_probs = legal_move_output_probs[0]
     print(legal_move_output_probs)
+    print(output_policy)
     best_move_index = np.argmax(legal_move_output_probs)
     return from_index_to_move_tuple(best_move_index)
 
@@ -540,6 +541,8 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
     Then, if it was a loss:
       set all of the spots to zero that are illegal, and set to zero the spot
       that made you lose. Then, renormalize. That's your goal.
+    If it was a win, you just set everything but the move you made to 0.0, 
+    and that to 1.0. That's easy, and you don't even have to calculate the output probs.
 
     """
 
@@ -547,23 +550,12 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
     if len(all_boards_list) != len(all_moves_list):
       raise Exception("Should pass in one board per move.")
 
-
-
-
-    set_target_to = None
-    if this_player == player_who_won:
-      set_target_to = 1.0
-    else:
-      set_target_to = 0.0
-
-
-
-    if len(all_boards_list) != len(all_moves_list):
-      raise Exception("Should pass in one board per move.")
     current_turn = 1
     all_inputs = []
-    all_training_masks = []
-    all_output_goals = []
+    players_moves = []
+    if this_player != player_who_won:
+      legal_movemap_list = []
+
     for i in xrange(len(all_boards_list)):
       if current_turn != this_player:
         current_turn *= -1
@@ -571,68 +563,174 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
 
       board = all_boards_list[i]
       move = all_moves_list[i]
-
       all_previous_boards_from_this_turn = all_boards_list[0:i] #It shouldn't include the current board.
-      # On the first time, it should be empty, on the last time, it should be all but the last.
-
-      valid_moves = util.output_all_valid_moves(board, 
-            all_previous_boards_from_this_turn, current_turn)
 
       board_input = board_to_input_transform_policy(
             board, all_previous_boards_from_this_turn, current_turn)
 
-      """
-      Training mask: I want the invalid moves to show through, as well
-      as the single move that we care about. I don't care what it does
-      to the other valid moves, I have no info on them.
-
-
-      IMPORTANT! NOW THAT I'VE TRAINED IT TO RECOGNIZE VALID MOVES,
-      IT DOESN'T REALLY MAKE SENSE TO DILUTE TRAINING BY ALSO RE-LEARNING
-      WHAT IS A VALID MOVE.
-
-      I THINK A MORE 
-      """ 
-
-      training_mask_policy = np.ones(BOARD_SIZE*BOARD_SIZE+1, dtype=np.float32)
-      for valid_move in valid_moves:
-        index_of_valid_move = from_move_tuple_to_index(move)
-        training_mask_policy[index_of_valid_move] = 0.0 #We don't care about valid moves.
-      # And now for the move we care about. Set it to 1, because we care about it.
-      index_of_move = from_move_tuple_to_index(move)
-      training_mask_policy[index_of_move] = 1.0
-
-      # And finally, the goal. All zeros if you lost, all but one zero if you won.
-      output_goal = np.zeros(BOARD_SIZE*BOARD_SIZE+1, dtype=np.float32)
-      output_goal[index_of_move] = set_target_to
-
       all_inputs.append(board_input)
-      all_training_masks.append(training_mask_policy)
-      all_output_goals.append(output_goal)
-
-      # This is important!
-      current_turn *= -1
+      players_moves.append(move)
+      if this_player != player_who_won:
+        valid_movemask = util.output_valid_moves_mask(board, 
+                    all_previous_boards_from_this_turn, current_turn)
+        legal_movemap_list.append(valid_movemask)
 
     all_inputs = np.asarray(all_inputs, dtype=np.float32).reshape((-1,BOARD_SIZE*BOARD_SIZE,NUM_FEATURES))
-    all_training_masks = np.asarray(all_training_masks, dtype=np.float32).reshape((-1, BOARD_SIZE*BOARD_SIZE+1))
-    all_output_goals = np.asarray(all_output_goals, dtype=np.float32).reshape((-1, BOARD_SIZE*BOARD_SIZE+1))
+    
+    if this_player != player_who_won:
+      legal_movemap_list = np.asarray(legal_movemap_list, dtype=np.float32)
 
-    # print("Finally, created all of the inputs. Who knows if they are \
-    #   right though. Will print in the beginning to make sure.")
+    if len(all_inputs) != len(players_moves):
+      raise Exception('should be same number of moves!')
 
-    # print("inputs: ")
-    # print(all_inputs)
-    # print('training masks: ')
-    # print(all_training_masks)
-    # print('output_goals')
-    # print(all_output_goals)
-    # print("screw it, I'm going to learn from them here too.")
+    if this_player != player_who_won:
+      if len(all_inputs) != len(legal_movemap_list):
+        raise Exception('should be same number of moves!')
 
-    return all_inputs, all_training_masks, all_output_goals
+
+
+    all_output_goals = []
+
+    if this_player == player_who_won:
+      print('won!')
+      for move in players_moves:
+        output_goal = np.zeros(BOARD_SIZE*BOARD_SIZE+1, dtype=np.float32)
+        index = from_move_tuple_to_index(move)
+        output_goal[index] = 1.0
+        all_output_goals.append(output_goal)
+      all_output_goals = np.asarray(all_output_goals, dtype=np.float32)
+    else:
+      print('lost!')
+      print('need to compute legal moves here again...')
+      all_outputs_from_inputs = self.sess.run(softmax_output_policy, feed_dict={
+        x_policy : all_inputs,
+        softmax_temperature_policy : GLOBAL_TEMPERATURE
+      })
+      if all_outputs_from_inputs.shape != legal_movemap_list.shape:
+        raise Exception('shapes should be same for moves and outputs.')
+      valid_outputs = all_outputs_from_inputs * legal_movemap_list
+      # for output, move in zip(all_outputs_from_inputs, legal_movemap_list):
+
+      # I think it will edit in place if I loop through.
+      for output, move in zip(valid_outputs, players_moves):
+        index = from_move_tuple_to_index(move)
+        old_val = output[index]
+        output[index] = 0.0 #we don't want to do this move!
+        # But, there's a chance that there are no legal moves besides the
+        # one you did, in which case we'll want to catch it.
+        for_norm = np.sum(output)
+
+        if abs(for_norm) <= 0.001:
+          print('caught a zero-bug. Reverting.')
+          output[index] = old_val
+        else:
+          output /= for_norm
+      all_output_goals = np.asarray(valid_outputs, dtype=np.float32)
+        # At this point, it should be normalized, and what we want for output.
+        # Boy that was tough.
+    print('desired outputs created')
+    # valid_output_goals = np.asarray(valid_outputs, dtype=np.float32).reshape((-1, BOARD_SIZE*BOARD_SIZE+1))
+
+    return all_inputs, all_output_goals
+
+
+
+    # all_output_goals = []
+
+    return
+    raise Exception("everything below here is old!")
+
+
+
+
+    # set_target_to = None
+    # if this_player == player_who_won:
+    #   set_target_to = 1.0
+    # else:
+    #   set_target_to = 0.0
+
+
+
+    # if len(all_boards_list) != len(all_moves_list):
+    #   raise Exception("Should pass in one board per move.")
+    # current_turn = 1
+    # all_inputs = []
+    # # all_training_masks = []
+    # all_output_goals = []
+    # for i in xrange(len(all_boards_list)):
+    #   if current_turn != this_player:
+    #     current_turn *= -1
+    #     continue
+
+    #   board = all_boards_list[i]
+    #   move = all_moves_list[i]
+
+    #   all_previous_boards_from_this_turn = all_boards_list[0:i] #It shouldn't include the current board.
+    #   # On the first time, it should be empty, on the last time, it should be all but the last.
+
+    #   valid_moves = util.output_all_valid_moves(board, 
+    #         all_previous_boards_from_this_turn, current_turn)
+
+    #   board_input = board_to_input_transform_policy(
+    #         board, all_previous_boards_from_this_turn, current_turn)
+
+
+
+
+
+
+    #   """
+    #   Training mask: I want the invalid moves to show through, as well
+    #   as the single move that we care about. I don't care what it does
+    #   to the other valid moves, I have no info on them.
+
+
+    #   IMPORTANT! NOW THAT I'VE TRAINED IT TO RECOGNIZE VALID MOVES,
+    #   IT DOESN'T REALLY MAKE SENSE TO DILUTE TRAINING BY ALSO RE-LEARNING
+    #   WHAT IS A VALID MOVE.
+
+    #   I THINK A MORE 
+    #   """ 
+
+    #   training_mask_policy = np.ones(BOARD_SIZE*BOARD_SIZE+1, dtype=np.float32)
+    #   for valid_move in valid_moves:
+    #     index_of_valid_move = from_move_tuple_to_index(move)
+    #     training_mask_policy[index_of_valid_move] = 0.0 #We don't care about valid moves.
+    #   # And now for the move we care about. Set it to 1, because we care about it.
+    #   index_of_move = from_move_tuple_to_index(move)
+    #   training_mask_policy[index_of_move] = 1.0
+
+    #   # And finally, the goal. All zeros if you lost, all but one zero if you won.
+    #   output_goal = np.zeros(BOARD_SIZE*BOARD_SIZE+1, dtype=np.float32)
+    #   output_goal[index_of_move] = set_target_to
+
+    #   all_inputs.append(board_input)
+    #   all_training_masks.append(training_mask_policy)
+    #   all_output_goals.append(output_goal)
+
+    #   # This is important!
+    #   current_turn *= -1
+
+    # all_inputs = np.asarray(all_inputs, dtype=np.float32).reshape((-1,BOARD_SIZE*BOARD_SIZE,NUM_FEATURES))
+    # all_training_masks = np.asarray(all_training_masks, dtype=np.float32).reshape((-1, BOARD_SIZE*BOARD_SIZE+1))
+    # all_output_goals = np.asarray(all_output_goals, dtype=np.float32).reshape((-1, BOARD_SIZE*BOARD_SIZE+1))
+
+    # # print("Finally, created all of the inputs. Who knows if they are \
+    # #   right though. Will print in the beginning to make sure.")
+
+    # # print("inputs: ")
+    # # print(all_inputs)
+    # # print('training masks: ')
+    # # print(all_training_masks)
+    # # print('output_goals')
+    # # print(all_output_goals)
+    # # print("screw it, I'm going to learn from them here too.")
+
+    # return all_inputs, all_training_masks, all_output_goals
 
 
   def learn_from_for_results_of_game(self, all_boards_list, all_moves_list, this_player, player_who_won, num_times_to_train=25):
-    all_inputs, all_training_masks, all_output_goals = self.create_inputs_to_learn_from_for_results_of_game(all_boards_list, all_moves_list, this_player, player_who_won)
+    all_inputs, all_output_goals = self.create_inputs_to_learn_from_for_results_of_game(all_boards_list, all_moves_list, this_player, player_who_won)
     # print("training on game:")
     # print('all inputs shape:')
     # print(all_inputs.shape)
@@ -654,7 +752,6 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
       self.sess.run(train_step_policy, feed_dict={
         x_policy : all_inputs,
         softmax_temperature_policy : GLOBAL_TEMPERATURE,
-        training_mask_policy : all_training_masks,
         softmax_output_goal_policy : all_output_goals
       })
     print("trained!")
@@ -663,7 +760,6 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
       self.sess.run(total_error, feed_dict={
         x_policy : all_inputs,
         softmax_temperature_policy : GLOBAL_TEMPERATURE,
-        training_mask_policy : all_training_masks,
         softmax_output_goal_policy : all_output_goals
       })
     )
@@ -812,7 +908,7 @@ def play_game(load_data_1, load_data_2):
   else:
     print("p2 won!")
 
-  convbot_one.learn_from_for_results_of_game(all_previous_boards, all_moves, p1, winner, num_times_to_train=25)
+  convbot_one.learn_from_for_results_of_game(all_previous_boards, all_moves, p1, winner, num_times_to_train=10)
   # print("convbot_one has been taught")
   convbot_one.save_in_next_slot()
   print("convbot_one has been saved")
@@ -1017,7 +1113,7 @@ def train_on_each_batch_lots(f_name):
   for board_list in random_board_iterator():
     inputs = get_inputs_from_boards(board_list)
     outputs = get_output_goals_for_boards(board_list)
-    training_mask = np.ones_like(outputs)
+    # training_mask = np.ones_like(outputs)
     # The training mask is unneccesarry here, but what it does is say, everything
     # is in play.
     for i in range(50):
@@ -1027,7 +1123,6 @@ def train_on_each_batch_lots(f_name):
         x_policy : inputs,
         softmax_output_goal_policy : outputs,
         softmax_temperature_policy : GLOBAL_TEMPERATURE,
-        training_mask_policy : training_mask
       })
       # print("ending training calculation")
       # error_list.append(tot_err)
@@ -1067,15 +1162,14 @@ def test_move_accuracy(f_name, batch=None):
     inputs = get_inputs_from_boards(board_list)
     print(inputs[80])
     outputs = get_output_goals_for_boards(board_list)
-    training_mask = np.ones_like(outputs)
+    # training_mask = np.ones_like(outputs)
     # The training mask is unneccesarry here, but what it does is say, everything
     # is in play.
     print("starting training calculation")
     softmax_output, l2_err, tot_err = convbot.sess.run([softmax_output_policy, l2_error_total, total_error], feed_dict={
       x_policy : inputs,
       softmax_output_goal_policy : outputs,
-      softmax_temperature_policy : GLOBAL_TEMPERATURE,
-      training_mask_policy : training_mask
+      softmax_temperature_policy : GLOBAL_TEMPERATURE
     })
     # print('first 10 outputs')
     # print(outputs[0:10])

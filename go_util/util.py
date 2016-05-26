@@ -624,7 +624,7 @@ def output_valid_moves_mask(board_matrix, all_previous_boards, current_player):
     index = from_move_tuple_to_index(board_matrix, move)
     move_array[index] = 1.0
     
-  return np.asarray(move_array)
+  return np.asarray(move_array, dtype=np.float32)
 
 
 

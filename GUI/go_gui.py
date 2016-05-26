@@ -25,7 +25,8 @@ from go_util import util
 
 # from NNET.FIVE.convnet_policy_features import Convbot_FIVE_POLICY_FEATURES
 
-from NNET.NINE.convnet_only_policy import Convbot_NINE_PURE_POLICY
+# from NNET.NINE.convnet_only_policy import Convbot_NINE_PURE_POLICY
+from NNET.NINE.convnet_movetrained_first import Convbot_NINE_POLICY_MOVETRAINED
 
 from NNET.NINE.random_mover import Random_Mover
 
@@ -219,7 +220,7 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      self.board_metadata['black_AI'] = Convbot_NINE_PURE_POLICY(folder_name="1", batch_num=3061)
+      self.board_metadata['black_AI'] = Convbot_NINE_POLICY_MOVETRAINED(folder_name="1", batch_num=501)
       # Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_6820_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       
@@ -230,7 +231,7 @@ class Board:
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_25_batch.ckpt")
                 
     if self.board_metadata['white_player'] == 'AI':
-      self.board_metadata['white_AI'] = Convbot_NINE_PURE_POLICY(folder_name="1", batch_num=3061)
+      self.board_metadata['white_AI'] = Convbot_NINE_POLICY_MOVETRAINED(folder_name="2", batch_num=501)
       # Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_6820_batch.ckpt")
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_POLICY_FEATURES(load_path="../NNET/FIVE/saved_models/convnet_feat_pol/trained_on_19_batch.ckpt")

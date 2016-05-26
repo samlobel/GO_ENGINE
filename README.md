@@ -250,3 +250,7 @@ I'll use a few different ones as seeds, and then I'll put them through my random
 that playing the games is SO by far the most time-consuming part. It might even be good
 to not just save the game_state, but to save all of the inputs.
 
+
+Wow, that was a historic mess. I spent all night training something to output a uniform distribution. It's because I used too much negative reinforcement, I like the
+thing I'm going to do a lot more.
+
