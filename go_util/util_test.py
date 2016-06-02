@@ -207,30 +207,37 @@ def test_def_score_board():
 def test_generate_random_board():
   pass
 
+def test_move_is_eye():
+  assert not move_is_eye(copy(b7_4x4), (0,0),1)
+  assert move_is_eye(copy(b7_4x4), (3,0),1)
+  assert not move_is_eye(copy(b7_4x4), (1,2),-1)
+
 
 if __name__ == '__main__':
-  test_boards_are_equal()
-  test_move_is_on_board()
-  test_get_value_for_spot()
-  test_set_value_for_spot()
-  test_spot_is_open()
-  test_spot_is_color()
-  test_get_neighbors_on_board()
-  test_get_neighbors_of_color()
-  # test_count_liberties() #Only a helper function. Can test through parent function.
-  test_count_liberties_around_stone()
-  test_get_group_around_stone()
-  test_count_liberties_around_group()
-  # test_confirm_group_is_one_color()
-  # test_remove_stones_in_group()
-  test_remove_group_around_stone()
-  test_spot_is_suicide()
-  test_update_board_from_move()
-  test_move_makes_duplicate()
-  test_move_is_valid()
-  test_output_all_valid_moves()
-  test_determine_owner_of_free_space()
-  test_def_score_board()
+  test_move_is_eye()
+
+  # test_boards_are_equal()
+  # test_move_is_on_board()
+  # test_get_value_for_spot()
+  # test_set_value_for_spot()
+  # test_spot_is_open()
+  # test_spot_is_color()
+  # test_get_neighbors_on_board()
+  # test_get_neighbors_of_color()
+  # # test_count_liberties() #Only a helper function. Can test through parent function.
+  # test_count_liberties_around_stone()
+  # test_get_group_around_stone()
+  # test_count_liberties_around_group()
+  # # test_confirm_group_is_one_color()
+  # # test_remove_stones_in_group()
+  # test_remove_group_around_stone()
+  # test_spot_is_suicide()
+  # test_update_board_from_move()
+  # test_move_makes_duplicate()
+  # test_move_is_valid()
+  # test_output_all_valid_moves()
+  # test_determine_owner_of_free_space()
+  # test_def_score_board()
 
 
 

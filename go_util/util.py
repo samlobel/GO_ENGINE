@@ -149,6 +149,15 @@ def get_neighbors_on_board(board_matrix, spot_tuple):
   possible_spots = [p for p in possible_spots if move_is_on_board(board_matrix, p)]
   return possible_spots
 
+def get_diagonals_on_board(board_matrix, spot_tuple):
+  if not move_is_on_board(board_matrix, spot_tuple):
+    print "move passed to spot_is_open is not on board!"
+    raise Exception("illegal move passed to spot_is_open")
+  x, y = spot_tuple
+  possible_spots = [(x+1,y+1),(x-1,y-1),(x-1,y+1),(x+1,y-1)]
+  possible_spots = [p for p in possible_spots if move_is_on_board(board_matrix, p)]
+  return possible_spots
+
 
 def get_neighbors_of_color(board_matrix, spot_tuple, color):
   if color not in (-1,0,1):
@@ -507,52 +516,47 @@ def move_is_valid(board_matrix, move_tuple, current_player, all_previous_boards)
   # I think that's it.
   return True
 
+def move_is_eye(board_matrix, move_tuple, current_player, stack=[]):
+  """
+  Since I don't know much about GO, concept generously borrowed from:
+  https://github.com/Rochester-NRT/RocAlphaGo/blob/develop/AlphaGo/go.py
+  Which is taken from other go programs.
+  """
+  if not spot_is_open(board_matrix, move_tuple):
+    return False
 
-# def valid_move_is_sensible(board_matrix, move_tuple, current_player, previous_board):
-#   """
-#   The only time its REALLY stupid to fill in a move is if it makes it so you only
-#   have one eye. If it doesn't cause a capture, and the piece you
-#   just put down only has one liberty. Then it's a bad move.
+  neighbors = get_neighbors_on_board(board_matrix, move_tuple)
+  for n in neighbors:
+    if get_value_for_spot(board_matrix, n) != current_player:
+      return False
 
-#   ONLY CALL AFTER spot_is_suicide and move_makes_duplicate.
+  allowed_bad_diagonals = 1
+  if len(neighbors) == 2:
+    allowed_bad_diagonals = 0
 
-#   update board.
-#   check if it took any neighbors. If so, output True
-#   check if the stone you just placed has only one liberty.
-#   If so, output False. Otherwise, output True.
-#   """
-#   if move_tuple is None:
-#     raise Exception("I don't think that anyone is going to call this function with\
-#       none")
+  num_bad_diagonals = 0
 
-#   neighbors_on_board = get_neighbors_on_board(board_matrix, move_tuple)
-#   neighbors_and_color = set([(spot, get_value_for_spot(board_matrix, spot)) for spot in neighbors_on_board])
-#   updated_board = update_board_from_move(board_matrix, move_tuple, current_player)
-#   new_neighbors_and_color = set([(spot, get_value_for_spot(updated_board, spot)) for spot in neighbors_on_board])
-#   if neighbors_and_color != new_neighbors_and_color:
-#     # This means something was taken, in which case it is an okay thing to do.
-#     return True
-#   else:
-#     # This means nothing was taken.
-#     liberties_around_stone = count_liberties_around_stone(updated_board, move_tuple)
-#     if liberties_around_stone == 0:
-#       raise Exception("Dead stone? This probably means that you didn't check for \
-#         spot_is_suicide, which is a cardinal sin.")
-#     elif liberties_around_stone == 1:
-#       # You never want to make a move that makes you have no liberties.
-#       return False
-#     else:
-#       return True
+  diagonals = get_diagonals_on_board(board_matrix, move_tuple)
+  # print diagonals
+  for d in diagonals:
+    if get_value_for_spot(board_matrix, d) == -1 * current_player:
+      num_bad_diagonals += 1
+    elif spot_is_open(board_matrix, d) and d not in stack:
+      stack.append(d)
+      if not move_is_eye(board_matrix, d, current_player, stack):
+        num_bad_diagonals += 1
+      stack.pop()
+    if num_bad_diagonals > allowed_bad_diagonals:
+      return False 
 
+  return True
 
-
-
-
-
-
-# def move_is_sensible_and_valid(board_matrix, move_tuple, current_player, previous_board):
-
-#   pass
+def move_is_valid_and_sensible(board_matrix, move_tuple, current_player, all_previous_boards):
+  if not move_is_valid(board_matrix, move_tuple, current_player, all_previous_boards):
+    return False
+  if not moves_is_eye(board_matrix, move_tuple, current_player):
+    return False
+  return True
 
 
 
@@ -585,7 +589,15 @@ def output_one_valid_move(board_matrix, all_previous_boards, current_player):
   First, with probability 1/free_spaces, output None.
   """
 
+def output_all_valid_sensible_moves(board_matrix, all_previous_boards, current_player):
+  valid_moves = set([])
+  length, width = board_matrix.shape
+  for m_t in move_tuples_on_board(board_matrix):
+    if move_is_valid_and_sensible(board_matrix, m_t, current_player, all_previous_boards):
+      valid_moves.add(m_t)
 
+  # valid_moves.add(None)
+  return valid_moves
 
 def output_all_valid_moves(board_matrix, all_previous_boards, current_player):
   """

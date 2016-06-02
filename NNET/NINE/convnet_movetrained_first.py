@@ -323,14 +323,14 @@ total_error = mean_square_policy + l2_error_total
 # _policy(learning_rate=0.01, momentum=0.9)
 
 
-# MomentumOptimizer_policy = tf.train.MomentumOptimizer(0.01, 0.1)
-# train_step_policy = MomentumOptimizer_policy.minimize(total_error)
+MomentumOptimizer_policy = tf.train.MomentumOptimizer(0.01, 0.1, name=prefixize('momentum_policy'))
+train_step_policy = MomentumOptimizer_policy.minimize(total_error)
 
-AdamOptimizer = tf.train.AdamOptimizer(1e-4)
-train_step_policy = AdamOptimizer.minimize(total_error)
+# AdamOptimizer = tf.train.AdamOptimizer(1e-4)
+# train_step_policy = AdamOptimizer.minimize(total_error)
 
-# GDOptimizer_policy = tf.train.GradientDescentOptimizer(0.01)
-# train_step_policy = GDOptimizer_policy.minimize(total_error)
+MomentumOptimizer_learnmoves = tf.train.MomentumOptimizer(0.01, 0.1, name=prefixize('momentum_learnmoves_policy'))
+train_step_learnmoves = MomentumOptimizer_policy.minimize(total_error)
 
 
 
@@ -643,92 +643,6 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
 
 
 
-    # set_target_to = None
-    # if this_player == player_who_won:
-    #   set_target_to = 1.0
-    # else:
-    #   set_target_to = 0.0
-
-
-
-    # if len(all_boards_list) != len(all_moves_list):
-    #   raise Exception("Should pass in one board per move.")
-    # current_turn = 1
-    # all_inputs = []
-    # # all_training_masks = []
-    # all_output_goals = []
-    # for i in xrange(len(all_boards_list)):
-    #   if current_turn != this_player:
-    #     current_turn *= -1
-    #     continue
-
-    #   board = all_boards_list[i]
-    #   move = all_moves_list[i]
-
-    #   all_previous_boards_from_this_turn = all_boards_list[0:i] #It shouldn't include the current board.
-    #   # On the first time, it should be empty, on the last time, it should be all but the last.
-
-    #   valid_moves = util.output_all_valid_moves(board, 
-    #         all_previous_boards_from_this_turn, current_turn)
-
-    #   board_input = board_to_input_transform_policy(
-    #         board, all_previous_boards_from_this_turn, current_turn)
-
-
-
-
-
-
-    #   """
-    #   Training mask: I want the invalid moves to show through, as well
-    #   as the single move that we care about. I don't care what it does
-    #   to the other valid moves, I have no info on them.
-
-
-    #   IMPORTANT! NOW THAT I'VE TRAINED IT TO RECOGNIZE VALID MOVES,
-    #   IT DOESN'T REALLY MAKE SENSE TO DILUTE TRAINING BY ALSO RE-LEARNING
-    #   WHAT IS A VALID MOVE.
-
-    #   I THINK A MORE 
-    #   """ 
-
-    #   training_mask_policy = np.ones(BOARD_SIZE*BOARD_SIZE+1, dtype=np.float32)
-    #   for valid_move in valid_moves:
-    #     index_of_valid_move = from_move_tuple_to_index(move)
-    #     training_mask_policy[index_of_valid_move] = 0.0 #We don't care about valid moves.
-    #   # And now for the move we care about. Set it to 1, because we care about it.
-    #   index_of_move = from_move_tuple_to_index(move)
-    #   training_mask_policy[index_of_move] = 1.0
-
-    #   # And finally, the goal. All zeros if you lost, all but one zero if you won.
-    #   output_goal = np.zeros(BOARD_SIZE*BOARD_SIZE+1, dtype=np.float32)
-    #   output_goal[index_of_move] = set_target_to
-
-    #   all_inputs.append(board_input)
-    #   all_training_masks.append(training_mask_policy)
-    #   all_output_goals.append(output_goal)
-
-    #   # This is important!
-    #   current_turn *= -1
-
-    # all_inputs = np.asarray(all_inputs, dtype=np.float32).reshape((-1,BOARD_SIZE*BOARD_SIZE,NUM_FEATURES))
-    # all_training_masks = np.asarray(all_training_masks, dtype=np.float32).reshape((-1, BOARD_SIZE*BOARD_SIZE+1))
-    # all_output_goals = np.asarray(all_output_goals, dtype=np.float32).reshape((-1, BOARD_SIZE*BOARD_SIZE+1))
-
-    # # print("Finally, created all of the inputs. Who knows if they are \
-    # #   right though. Will print in the beginning to make sure.")
-
-    # # print("inputs: ")
-    # # print(all_inputs)
-    # # print('training masks: ')
-    # # print(all_training_masks)
-    # # print('output_goals')
-    # # print(all_output_goals)
-    # # print("screw it, I'm going to learn from them here too.")
-
-    # return all_inputs, all_training_masks, all_output_goals
-
-
   def learn_from_for_results_of_game(self, all_boards_list, all_moves_list, this_player, player_who_won, num_times_to_train=25):
     all_inputs, all_output_goals = self.create_inputs_to_learn_from_for_results_of_game(all_boards_list, all_moves_list, this_player, player_who_won)
     # print("training on game:")
@@ -767,38 +681,6 @@ class Convbot_NINE_POLICY_MOVETRAINED(GoBot):
 
 
   
-
-
-  # def board_to_input_transform_value(self, board_matrix, all_previous_boards, current_turn):
-  #   """
-  #   I should get this ready for features, but I really don't want to.
-  #   Remember, this is assuming that it's white's turn? No. For policy,
-  #   it's black's turn. For value, it's white's turn. I think that means 
-  #   I should have two of these functions.
-  #   How can I still not be sure if I have a *-1 error somewhere? That's
-  #   ridiculous.
-
-  #   ASSUMES THIS PLAYER IS WHITE. IMPORTANT FOR LEGAL_MOVE MAP.
-
-  #   ACTUALLY, DOESN'T ASSUME THIS. BUT IT DOES TRANSFORM IT SO THAT ITS TRUE.
-
-  #   """
-  #   if current_turn not in (-1,1):
-  #     raise Exception("current turn must be -1 or 1. instead it is " + str(current_turn))
-  #   legal_moves_map = util.output_valid_moves_boardmap(board_matrix, all_previous_boards, current_turn)
-  #   liberty_map = util.output_liberty_map(board_matrix)
-
-  #   feature_array = None
-  #   if current_turn == -1:
-  #     feature_array = np.asarray([board_matrix, legal_moves_map, liberty_map])
-  #   else:
-  #     feature_array = np.asarray([-1 *board_matrix, legal_moves_map, -1 * liberty_map])
-
-  #   feature_array = feature_array.T
-  #   flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
-    
-  #   return flattened_input
-
 def board_to_input_transform_policy(board_matrix, all_previous_boards, current_turn):
   """
   I should get this ready for features, but I really don't want to.
