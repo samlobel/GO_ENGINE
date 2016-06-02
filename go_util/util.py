@@ -554,7 +554,7 @@ def move_is_eye(board_matrix, move_tuple, current_player, stack=[]):
 def move_is_valid_and_sensible(board_matrix, move_tuple, current_player, all_previous_boards):
   if not move_is_valid(board_matrix, move_tuple, current_player, all_previous_boards):
     return False
-  if not moves_is_eye(board_matrix, move_tuple, current_player):
+  if move_is_eye(board_matrix, move_tuple, current_player):
     return False
   return True
 
@@ -596,6 +596,9 @@ def output_all_valid_sensible_moves(board_matrix, all_previous_boards, current_p
     if move_is_valid_and_sensible(board_matrix, m_t, current_player, all_previous_boards):
       valid_moves.add(m_t)
 
+  # NO NONE! You'll do this if there's nothing left to do otherwise, because thats.
+  # the only time you would want to pass, I think.
+
   # valid_moves.add(None)
   return valid_moves
 
@@ -612,6 +615,16 @@ def output_all_valid_moves(board_matrix, all_previous_boards, current_player):
 
   valid_moves.add(None)
   return valid_moves
+
+def output_valid_sensible_moves_boardmap(board_matrix, all_previous_boards, current_player):
+  if board_matrix is None:
+    raise Exception("I dont really know how to handle board_matrix being none in output_valid_moves_boardmap")
+  valid_moves = output_all_valid_sensible_moves(board_matrix, all_previous_boards, current_player)
+  print valid_moves
+  boardmap = np.zeros(board_matrix.shape)
+  for move in valid_moves:
+    set_value_for_spot(boardmap, move, 1)
+  return boardmap
 
 def output_valid_moves_boardmap(board_matrix, all_previous_boards, current_player):
   if board_matrix is None:

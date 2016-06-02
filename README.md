@@ -1,6 +1,5 @@
 ## NNET GO
 
-
 This is going to be a really, really involved project.
 
 
@@ -254,3 +253,18 @@ to not just save the game_state, but to save all of the inputs.
 Wow, that was a historic mess. I spent all night training something to output a uniform distribution. It's because I used too much negative reinforcement, I like the
 thing I'm going to do a lot more.
 
+
+
+### TO DO:
+Right now I'm in the middle of making it work with convnet through and through, for 5.
+At some point I'm going to try and use the parser for 5 as a starting point for 9. But anyways, I need to change the softmax_with_temp thing to work with matrices. I may just change it to the built-in softmax at temp 1. Other than that, there's a lot of editing I need to do with stuff like move masks and whatnot. And finally, I need to separate the 
+learning of moves and winning, so that it trains learning moves at a MUCH lower rate, like 25x slower or something.
+Which means that one of the training goals, you set the one thing to what you want, and then re-normalize. NOTE, that there is probably something I can do to make the signal stronger for losing, because it's the same magnitude of importance, but at the beginning, a weaker difference. So maybe find error, and update X/(error) times, where (error) is the error. For both of them, that's a good idea.
+
+### IDEA I WANT TO EXPLORE MORE:
+With the tanh activation function, and/or batch normalization, I think that inserting a layer that is the identity function with a little noise would be a great thing to do. It should be relatively the same.
+Or, with a ReLu, it's literally EXACTLY the same! Because it's an idempotent function. I bet you could train things VERY quickly this way. That's a great idea, Sam.
+
+
+## I'm in the middle of:
+transforming it so that the input isn't flat, but three board-shaped things that are feature-boardmaps.
