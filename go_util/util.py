@@ -620,7 +620,7 @@ def output_valid_sensible_moves_boardmap(board_matrix, all_previous_boards, curr
   if board_matrix is None:
     raise Exception("I dont really know how to handle board_matrix being none in output_valid_moves_boardmap")
   valid_moves = output_all_valid_sensible_moves(board_matrix, all_previous_boards, current_player)
-  print valid_moves
+  # print valid_moves
   boardmap = np.zeros(board_matrix.shape)
   for move in valid_moves:
     set_value_for_spot(boardmap, move, 1)
