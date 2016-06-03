@@ -271,3 +271,18 @@ transforming it so that the input isn't flat, but three board-shaped things that
 
 ### ALRIGHT, I'M DONE WITH MOVE-TRAINING. Maybe I can do it every once in a while.
 
+I think maybe the problem is that I don't split the layers like they do. That could be a good solution. So, I'll try that. But, how should I deal with the liberties? I definitely don't want negatives, if that's my thought. I definitely do want 
+
+
+Maybe I need to: train a value function on random. Because many boards will end up good even if you play badly from them, because of how they are at the moment. And then, train a policy function off of the value function, and then train the value function off of the policy function, and then train the policy function off of the value function. But do it in BIG batches. HMMMM. That's sort of what I did in the beginning, but not exactly.
+
+And DEFINITELY make it so there are no negative inputs, I think that's a MUST. Because right now it needs to do actual math to determine what the board looks like I think. It should be able to do it, but I don't know.
+
+It's a little weird, because there's no self-play in there. Except I guess to figure out the value function. But it's better, because it really gives more look-ahead than the other way.
+
+I think I want to try that.
+
+
+
+
+

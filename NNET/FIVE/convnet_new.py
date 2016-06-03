@@ -747,47 +747,53 @@ class Convbot_FIVE_NEW(GoBot):
     # It's actually not THAT unlikely. Anyway, it is what it is. Maybe I can go through
     # and MAX_CAP things. That's a good idea, it un-normalizes, but that's a better option.
 
-    only_correct_moves = self.sess.run(softmax_output_policy, feed_dict={
-      x_policy : all_inputs
-      # softmax_temperature_policy : GLOBAL_TEMPERATURE
-    })
-    # Note: will be edited for move-legality.
+    return all_inputs, all_output_goals, None
 
-    for valid_output, legal_sensible_move in zip(only_correct_moves, legal_movemap_list):
-      if np.count_nonzero(legal_sensible_move) == 0:
-        print("no legal moves left, there's nothing much you can do. ")
-        continue
-      copy_valid = np.copy(valid_output)
-      copy_valid *= legal_sensible_move
-      if np.count_nonzero(copy_valid) == 0:
-        print("Valid output is zero for some reason after the mult.")
-        continue
-      legal_sum = np.sum(copy_valid)
-      if legal_sum < 0.01:
-        print("For some reason, the sum is very small. Only small ones left?")
-        print(legal_sum)
-        print(copy_valid)
-        continue
-      valid_output /= legal_sum
-      valid_output = np.clip(valid_output, 0.0, 1.0, out=valid_output)
 
-      continue
-      # valid_output *= legal_sensible_move
-      # legal_sum = np.sum(valid_output)
-      # print(legal_sum)
-      # if legal_sum < 0.01:
-      #   print("for some reason, only the very small ones are left. You dont want to mess with that")
-      #   print("legal sum is 0!")
-      #   continue
-      #   print(valid_output)
-      #   print(legal_sensible_move)
-      #   raise Exception("boom bam")
-      # valid_output /= legal_sum
-      # valid_output = np.clip(valid_output, 0.0, 1.0, out=valid_output)
 
-    return all_inputs, all_output_goals, only_correct_moves
 
-    # raise Exception("should return before here.")
+    # only_correct_moves = self.sess.run(softmax_output_policy, feed_dict={
+    #   x_policy : all_inputs
+    #   # softmax_temperature_policy : GLOBAL_TEMPERATURE
+    # })
+    # # Note: will be edited for move-legality.
+
+    # for valid_output, legal_sensible_move in zip(only_correct_moves, legal_movemap_list):
+    #   if np.count_nonzero(legal_sensible_move) == 0:
+    #     print("no legal moves left, there's nothing much you can do. ")
+    #     continue
+    #   copy_valid = np.copy(valid_output)
+    #   copy_valid *= legal_sensible_move
+    #   if np.count_nonzero(copy_valid) == 0:
+    #     print("Valid output is zero for some reason after the mult.")
+    #     continue
+    #   legal_sum = np.sum(copy_valid)
+    #   if legal_sum < 0.01:
+    #     print("For some reason, the sum is very small. Only small ones left?")
+    #     print(legal_sum)
+    #     print(copy_valid)
+    #     continue
+    #   valid_output /= legal_sum
+    #   valid_output = np.clip(valid_output, 0.0, 1.0, out=valid_output)
+
+    #   continue
+    #   # valid_output *= legal_sensible_move
+    #   # legal_sum = np.sum(valid_output)
+    #   # print(legal_sum)
+    #   # if legal_sum < 0.01:
+    #   #   print("for some reason, only the very small ones are left. You dont want to mess with that")
+    #   #   print("legal sum is 0!")
+    #   #   continue
+    #   #   print(valid_output)
+    #   #   print(legal_sensible_move)
+    #   #   raise Exception("boom bam")
+    #   # valid_output /= legal_sum
+    #   # valid_output = np.clip(valid_output, 0.0, 1.0, out=valid_output)
+
+    # # return all_inputs, all_output_goals, only_correct_moves
+    # return all_inputs, all_output_goals, only_correct_moves
+
+    # # raise Exception("should return before here.")
 
 
 
@@ -876,27 +882,29 @@ class Convbot_FIVE_NEW(GoBot):
 
 
 
-  def learn_from_for_results_of_game(self, all_boards_list, all_moves_list, this_player, player_who_won, num_times_to_train=10):
+  def learn_from_for_results_of_game(self, all_boards_list, all_moves_list, this_player, player_who_won, num_times_to_train=1):
     all_inputs, all_output_goals, valid_moves_output_goals = self.create_inputs_to_learn_from_for_results_of_game(all_boards_list, all_moves_list, this_player, player_who_won)
 
     if this_player == player_who_won:
       print("Won!")
       for i in xrange(num_times_to_train):
-        self.sess.run(train_step_winning_policy, feed_dict={
+        mse, who_cares = self.sess.run([mean_square_policy, train_step_winning_policy], feed_dict={
           x_policy : all_inputs,
           softmax_output_goal_policy : all_output_goals
         })
+        print("MSE=" + str(mse))
     else:
       print("Lost!")
       for i in xrange(num_times_to_train):
-        self.sess.run(train_step_losing_policy, feed_dict={
+        mse, who_cares = self.sess.run([mean_square_policy, train_step_losing_policy], feed_dict={
           x_policy : all_inputs,
           softmax_output_goal_policy : all_output_goals
         })
-    print("training for both MOVES and L2_REG")
-    self.sess.run([train_step_learnmoves, train_step_l2_reg], feed_dict={
-      x_policy: all_inputs,
-      softmax_output_goal_policy: valid_moves_output_goals
+        print("MSE=" + str(mse))
+    print("training L2_REG")
+    self.sess.run([train_step_l2_reg], feed_dict={
+      # x_policy: all_inputs,
+      # softmax_output_goal_policy: valid_moves_output_goals
     })
     print("properly trained!")
     return
@@ -1062,7 +1070,7 @@ def play_game(load_data_1, load_data_2):
   else:
     print("p2 won!")
 
-  convbot_one.learn_from_for_results_of_game(all_previous_boards, all_moves, p1, winner, num_times_to_train=10)
+  convbot_one.learn_from_for_results_of_game(all_previous_boards, all_moves, p1, winner, num_times_to_train=1)
   # print("convbot_one has been taught")
   convbot_one.save_in_next_slot()
   print("convbot_one has been saved")
