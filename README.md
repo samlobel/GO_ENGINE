@@ -268,3 +268,6 @@ Or, with a ReLu, it's literally EXACTLY the same! Because it's an idempotent fun
 
 ## I'm in the middle of:
 transforming it so that the input isn't flat, but three board-shaped things that are feature-boardmaps.
+
+### ALRIGHT, I'M DONE WITH MOVE-TRAINING. Maybe I can do it every once in a while.
+

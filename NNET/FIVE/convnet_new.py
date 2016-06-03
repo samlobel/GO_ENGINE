@@ -563,7 +563,7 @@ class Convbot_FIVE_NEW(GoBot):
       return None
     # print(valid_moves_mask)
 
-    valid_sensible_boardmap = np.asarray([valid_sensible_boardmap], dtype=np.float32)
+    valid_sensible_moves_mask = np.asarray([valid_sensible_moves_mask], dtype=np.float32)
 
     board_input = board_to_input_transform_policy(board_matrix, all_previous_boards, current_turn)
     board_input = np.asarray([board_input], dtype=np.float32)
@@ -592,18 +592,27 @@ class Convbot_FIVE_NEW(GoBot):
 
 
     legal_move_output_probs = legal_move_output_probs[0]
-    print('legal_move_output_probs.')
-    print(legal_move_output_probs)
+
+    # print('legal_move_output_probs.')
+    # print(legal_move_output_probs)
 
     random_number = random.random()
     prob_sum = 0.0
     desired_tuple = None
 
+    should_break = False
+
     for i in xrange(BOARD_SIZE):
       for j in xrange(BOARD_SIZE):
-        prob_sum = legal_move_output_probs[i][j]
+        prob_sum += legal_move_output_probs[i][j]
         if prob_sum >= random_number:
           desired_tuple = (i,j)
+          should_break = True
+        if should_break:
+          break
+      if should_break:
+        break
+
     if desired_tuple is None:
       print("didn't find a match for tuple. no problem though. It's just None.")
 
@@ -708,7 +717,9 @@ class Convbot_FIVE_NEW(GoBot):
                   all_previous_boards_from_this_turn, current_turn)
       legal_movemap_list.append(valid_sensible_boardmap)
 
-    all_inputs = np.asarray(all_inputs, dtype=np.float32).reshape((-1,BOARD_SIZE*BOARD_SIZE,NUM_FEATURES))
+    all_inputs = np.asarray(all_inputs, dtype=np.float32)
+    # print(all_inputs)
+    # .reshape((-1,BOARD_SIZE*BOARD_SIZE,NUM_FEATURES))
     
     legal_movemap_list = np.asarray(legal_movemap_list, dtype=np.float32)
 
@@ -743,10 +754,36 @@ class Convbot_FIVE_NEW(GoBot):
     # Note: will be edited for move-legality.
 
     for valid_output, legal_sensible_move in zip(only_correct_moves, legal_movemap_list):
-      valid_output *= legal_sensible_move
-      legal_sum = np.sum(valid_output)
+      if np.count_nonzero(legal_sensible_move) == 0:
+        print("no legal moves left, there's nothing much you can do. ")
+        continue
+      copy_valid = np.copy(valid_output)
+      copy_valid *= legal_sensible_move
+      if np.count_nonzero(copy_valid) == 0:
+        print("Valid output is zero for some reason after the mult.")
+        continue
+      legal_sum = np.sum(copy_valid)
+      if legal_sum < 0.01:
+        print("For some reason, the sum is very small. Only small ones left?")
+        print(legal_sum)
+        print(copy_valid)
+        continue
       valid_output /= legal_sum
       valid_output = np.clip(valid_output, 0.0, 1.0, out=valid_output)
+
+      continue
+      # valid_output *= legal_sensible_move
+      # legal_sum = np.sum(valid_output)
+      # print(legal_sum)
+      # if legal_sum < 0.01:
+      #   print("for some reason, only the very small ones are left. You dont want to mess with that")
+      #   print("legal sum is 0!")
+      #   continue
+      #   print(valid_output)
+      #   print(legal_sensible_move)
+      #   raise Exception("boom bam")
+      # valid_output /= legal_sum
+      # valid_output = np.clip(valid_output, 0.0, 1.0, out=valid_output)
 
     return all_inputs, all_output_goals, only_correct_moves
 
@@ -844,21 +881,25 @@ class Convbot_FIVE_NEW(GoBot):
 
     if this_player == player_who_won:
       print("Won!")
-      sess.run(train_step_winning_policy, feed_dict={
-        x_policy : all_inputs,
-        softmax_output_goal_policy : all_output_goals
-      })
+      for i in xrange(num_times_to_train):
+        self.sess.run(train_step_winning_policy, feed_dict={
+          x_policy : all_inputs,
+          softmax_output_goal_policy : all_output_goals
+        })
     else:
       print("Lost!")
-      sess.run(train_step_losing_policy, feed_dict={
-        x_policy : all_inputs,
-        softmax_output_goal_policy : all_output_goals
-      })
+      for i in xrange(num_times_to_train):
+        self.sess.run(train_step_losing_policy, feed_dict={
+          x_policy : all_inputs,
+          softmax_output_goal_policy : all_output_goals
+        })
     print("training for both MOVES and L2_REG")
-    sess.run([train_step_learnmoves, train_step_l2_reg], feed_dict={
-      valid_moves_output_goals
+    self.sess.run([train_step_learnmoves, train_step_l2_reg], feed_dict={
+      x_policy: all_inputs,
+      softmax_output_goal_policy: valid_moves_output_goals
     })
     print("properly trained!")
+    return
 
 
     # print("training on game:")
@@ -884,23 +925,23 @@ class Convbot_FIVE_NEW(GoBot):
     of the error is what we want to do. Hmmm. I think it really is. I really can't
     see a reason it wouldn't be. And it's nice because it's literally the opposite.
 
-    """
+    # """
 
-    for i in xrange(num_times_to_train):
-      self.sess.run(train_step_policy, feed_dict={
-        x_policy : all_inputs,
-        # softmax_temperature_policy : GLOBAL_TEMPERATURE,
-        softmax_output_goal_policy : all_output_goals
-      })
-    print("trained!")
-    print("error on this one: ")
-    print(
-      self.sess.run(total_error, feed_dict={
-        x_policy : all_inputs,
-        # softmax_temperature_policy : GLOBAL_TEMPERATURE,
-        softmax_output_goal_policy : all_output_goals
-      })
-    )
+    # for i in xrange(num_times_to_train):
+    #   self.sess.run(train_step_policy, feed_dict={
+    #     x_policy : all_inputs,
+    #     # softmax_temperature_policy : GLOBAL_TEMPERATURE,
+    #     softmax_output_goal_policy : all_output_goals
+    #   })
+    # print("trained!")
+    # print("error on this one: ")
+    # print(
+    #   self.sess.run(total_error, feed_dict={
+    #     x_policy : all_inputs,
+    #     # softmax_temperature_policy : GLOBAL_TEMPERATURE,
+    #     softmax_output_goal_policy : all_output_goals
+    #   })
+    # )
 
 
 
