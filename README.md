@@ -283,6 +283,23 @@ It's a little weird, because there's no self-play in there. Except I guess to fi
 I think I want to try that.
 
 
+Why does it coat the edges? That doesn't make any sense.
+
+Maybe it's something about 
+
+
+It's a little silly but I think that maybe I should train the bads at twice the rate
+of the goods. Except, then it would zero in on whatever strategy it started with.
+
+
+I think what I really need to do is make the value and the policy network. It should be pretty easy to make the value network okay. Because some boards are just better.
+
+And there's no risk of overtraining it on randoms.
+
+So, I make the value network, and I train the initial policy network on it. That should be good as a start.
+
+After that, I train the policy network on the value network. There are two possibilities. I could either calculate the values of the next spots, and then calculate the softmax of that, or I could calculate the values, and aim it for the best one. I don't know. Maybe have it be a pretty steep softmax, because you don't want a 1 in 10 chance of picking a straight loser versus a straight winner. So, MAYBE a softmax with temperature 2? That means if there's one winner and one loser, you have a 99% chance of picking right. But who am I kidding, it'll never be that different. So 2 sounds good.
+
 
 
 

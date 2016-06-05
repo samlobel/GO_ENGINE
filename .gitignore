@@ -6,3 +6,4 @@ nohup.out
 *.zip
 *.out
 random_boards.txt
+random_board_results.txt

@@ -285,7 +285,7 @@ def output_liberty_map(board_matrix):
   NOTE: For white, it should output negative liberties.
 
   """
-  liberty_map = np.zeros(board_matrix.shape)
+  liberty_map = np.zeros(board_matrix.shape, dtype=np.float32)
   for mt in move_tuples_on_board(board_matrix):
     spot_value = get_value_for_spot(board_matrix, mt)
     if spot_value == 0:
@@ -559,6 +559,22 @@ def move_is_valid_and_sensible(board_matrix, move_tuple, current_player, all_pre
   return True
 
 
+def output_one_valid_sensible_move(board_matrix, all_previous_boards, current_player):
+  shape = board_matrix.shape
+  l1 = range(shape[0])
+  l2 = range(shape[1])
+  random.shuffle(l1)
+  random.shuffle(l2)
+  # print 'moves:'
+  # print l1
+  # print l2
+  for i in l1:
+    for j in l2:
+      if move_is_valid_and_sensible(board_matrix, (i,j), current_player, all_previous_boards):
+        return (i,j)
+  return None
+
+
 
 def output_one_valid_move(board_matrix, all_previous_boards, current_player):
   free_spaces = 0
@@ -569,12 +585,12 @@ def output_one_valid_move(board_matrix, all_previous_boards, current_player):
   random.shuffle(l1)
   random.shuffle(l2)
 
-  for i in range(shape[0]):
-    for j in range(shape[1]):
-      if spot_is_open(board_matrix, (i,j)):
-        free_spaces += 1
-  if random.random() < (1.0/(free_spaces+1)):
-    return None
+  # for i in range(shape[0]):
+  #   for j in range(shape[1]):
+  #     if spot_is_open(board_matrix, (i,j)):
+  #       free_spaces += 1
+  # if random.random() < (1.0/(free_spaces+1)):
+  #   return None
 
   for i in l1:
     for j in l2:
@@ -801,7 +817,7 @@ def score_board(current_board):
   }
 
 
-def determine_winner(current_board, handicap=0.0):
+def determine_winner(current_board, handicap=0.5):
 
   scores = score_board(current_board)
   score_difference = scores['pos'] - scores['neg'] - handicap
@@ -839,6 +855,27 @@ def generate_random_board(board_shape, total_moves):
     current_board = new_board
     next_turn = next_turn * -1
   return current_board, next_turn
+
+
+def determine_random_winner_of_board(input_board, current_turn, all_previous_boards=[]):
+  all_moves = []
+  current_board = np.copy(input_board)
+  while True:
+    if (len(all_moves) >= 2) and all_moves[-1] is None and all_moves[-2] is None:
+      # print("Game is over!")
+      break
+
+    this_move = output_one_valid_sensible_move(current_board, all_previous_boards, current_turn)
+    new_board = update_board_from_move(current_board, this_move, current_turn)
+    
+    all_moves.append(this_move)
+    all_previous_boards.append(current_board)
+    current_board = new_board
+    current_turn *= -1
+
+  # print("Game completed, lasted " + str(len(all_moves)) + " more turns")
+  winner = determine_winner(current_board)
+  return winner
 
 
 if __name__ == '__main__':

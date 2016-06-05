@@ -26,7 +26,7 @@ TRAIN_OR_TEST = "TRAIN"
 # TRAIN_OR_TEST = "TEST"
 
 
-NAME_PREFIX='fivebot_split_features_'
+NAME_PREFIX='fivebot_policy_value_better_'
 
 BOARD_SIZE = 5
 
@@ -172,73 +172,29 @@ def mean_square_two_listoflists(l1, l2, suffix):
 
 
 """
-INPUTS/OUTPUTS: 
-x : These are board inputs. The inputs are used for training and testing,
-for both the policy network and the value network.
+INPUTS POLICY: 
+x_policy : These are board inputs. The inputs are used for training and testing. They are
+a list of boards, where each square of the board has many features.
+
+legal_sensible_moves_map_policy: we use this as a way to output a valid move. It is 1 wherever a
+move is valid, and 0 wherever a move is invalid. Ideally the network would 
+predict a probability of 0 for each of these spots that is 0.
+
 The y_ output is used for training just the value network
 the computed_values_for_moves goes into a softmax to create the target
 output for the policy network.
 
-What each of these does is confusing.
-
-x_policy: is the transformed board input. Right now it's three features long, and
-soon it will be four, but its your standard input.
-
-softmax_temperature_policy: is the temperature of the softmax layer.
-
-legal_sensible_moves_map_policy: we use this as a way to output a valid move. It is 1 wherever a
-move is valid, and 0 wherever a move is invalid.
-
-training_mask_policy : its sort of the opposite of legal_sensible_moves_map_policy. It is
-one wherever a move is ILLEGAL, and also 1 wherever you actually went.
-The reason for this is, where this is 1, the optimizer will have access to the 
-underlying things, and therefore will optimizer parameters. Where it is zero,
-the optimizer can ignore. It's very nice that these things are so smart.
-NOTE:::: I'm changing my thoughts on this, because it should already know the
-rules, more or less. I should train it on everything, always, and then set the
-softmax_output_goal_policy to be : if it WON, 1 at the move it did and 0 elsewhere.
-if it lost, I think I should just smooth it out a little. Send it to the average
-over all legal moves. It would be better if I could send it to the average over
-all legal moves except the one it chose, but that's probably unneccesarry.
-The only problem I see with this is, half the time, you're training it
-to not recognize anything, and that's pretty shitty, cause it's already
-REALLY good at that. Shouldn't matter in the long-run, but it won't be good in
-the short-run. If I lost, I would just want to go in the opposite direction of
-winning. Maybe, that means that I need to minimize the negative of the old error.
-That would definitely do what I want it to. It does seem a little shitty though that
-it's going to smooth everything out, because it will push error to illegal moves.
-So, even though it seems like a great idea, I'm not a fan.
-
-Maybe, what I should do is (if I lose), get the output, set the index to 0
-that we want to minimize, set everything to zero that is illegal, renormalize,
-and then make that the target. Nice, that pushes the probability from the move
-you took to everywhere that is legal except it. It would be nice if I didn't
-have to have two separate training procedures, but whatever whatever.
-
-
-
-softmax_output_goal_policy: This is the goal of what you want to acheive. It
-really only matters at locations that the training_mask_policy is 1. You should
-pass in all zeros if you're trying to dissuade from a losing move, and all 
-zeros EXCEPT for the move-spot you're trying to persuade more of a winning move.
+softmax_output_goal_policy: This is the goal of what you want to acheive. You should 
+pass in 1 for wherever you actually want to go, and 0 elsewhere. If you win, you should
+minimize MSE, if you lose, you should maximize it.
 """
 
 # x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES], name=prefixize('x_value'))
 
 x_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE,BOARD_SIZE, NUM_FEATURES], name=prefixize('x_policy'))
-# softmax_temperature_policy = tf.placeholder(tf.float32, [], name=prefixize('softmax_temperature_policy'))
 
 legal_sensible_moves_map_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE,BOARD_SIZE], name=prefixize('legal_sensible_moves_map_policy'))
-# tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('legal_sensible_moves_map_policy'))
-
-# training_mask_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('training_mask_policy'))
 softmax_output_goal_policy = tf.placeholder(tf.float32, [None, BOARD_SIZE,BOARD_SIZE], name=prefixize('softmax_output_goal_policy'))
-# tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('softmax_output_goal_policy'))
-
-
-# y_ = tf.placeholder(tf.float32, [None, 1], name=prefixize("y_"))
-
-# computed_values_for_moves = tf.placeholder(tf.float32, [None, BOARD_SIZE*BOARD_SIZE+1], name=prefixize('computed_values_for_moves'))
 
 
 """
@@ -247,26 +203,14 @@ All variables used for the policy network, including outputs.
 Note that the optimizers don't have names, for either.
 
 These should all end in the word 'policy'.
-
-The problem is you don't want too much compression, because then you lose out
-on the ability to know what's happening where.
-
-I'll do this one with padding=same
-
-
-It's tricky that you can't compress the input too much, because you don't
-just need one number any more, but 26 (or 82, etc.) numbers. So, maybe
-I should have padding='SAME' for the parts of the policy network that are 
-not the first layer. OR/ALSO, I can just have a more complex fully-connected
-part.
 """
 
 
-x_image_policy = tf.reshape(x_policy, (-1,BOARD_SIZE,BOARD_SIZE,NUM_FEATURES), name=prefixize("x_image_policy"))
+# x_image_policy = tf.reshape(x_policy, (-1,BOARD_SIZE,BOARD_SIZE,NUM_FEATURES), name=prefixize("x_image_policy"))
 
 W_conv1_policy = weight_variable([3,3,NUM_FEATURES,20], suffix="W_conv1_policy")
 b_conv1_policy = bias_variable([20], suffix="b_conv1_policy")
-h_conv1_policy = tf.nn.elu(conv2d(x_image_policy, W_conv1_policy, padding="SAME") + b_conv1_policy, name=prefixize("h_conv1_policy"))
+h_conv1_policy = tf.nn.elu(conv2d(x_policy, W_conv1_policy, padding="SAME") + b_conv1_policy, name=prefixize("h_conv1_policy"))
 
 W_conv2_policy = weight_variable([3,3,20,20], suffix="W_conv2_policy")
 b_conv2_policy = bias_variable([20], suffix="b_conv2_policy")
@@ -280,7 +224,7 @@ W_conv4_policy = weight_variable([3,3,20,1], suffix="W_conv4_policy")
 
 convolved_4_policy = conv2d(h_conv3_policy, W_conv4_policy, padding="SAME")
 convolved_4_reshaped_policy = tf.reshape(convolved_4_policy,(-1, BOARD_SIZE, BOARD_SIZE))
-bias_4_policy = bias_variable([BOARD_SIZE,BOARD_SIZE], suffix="square_bias")
+bias_4_policy = bias_variable([BOARD_SIZE,BOARD_SIZE], suffix="square_bias_policy")
 input_to_softmax_policy = convolved_4_reshaped_policy + bias_4_policy
 
 softmax_output_policy = softmax(input_to_softmax_policy)
@@ -292,15 +236,32 @@ normalized_legal_softmax_output_policy = normalized_list_of_matrices(legal_softm
 # mean_square_policy = tf.reduce_mean(tf.squared_difference(l1,l2), name=prefixize(suffix))
 mean_square_policy = mean_square_two_listoflists(softmax_output_policy, softmax_output_goal_policy, suffix="mean_square_policy")
 
-l2_loss_layer_1 = tf.nn.l2_loss(W_conv1_policy, name=prefixize('l2_layer1'))
-l2_loss_layer_2 = tf.nn.l2_loss(W_conv2_policy, name=prefixize('l2_layer2'))
-l2_loss_layer_3 = tf.nn.l2_loss(W_conv3_policy, name=prefixize('l2_layer3'))
-l2_loss_layer_4 = tf.nn.l2_loss(W_conv4_policy, name=prefixize('l2_layer4'))
+l2_loss_layer_1_policy = tf.nn.l2_loss(W_conv1_policy, name=prefixize('l2_layer1_policy'))
+l2_loss_layer_2_policy = tf.nn.l2_loss(W_conv2_policy, name=prefixize('l2_layer2_policy'))
+l2_loss_layer_3_policy = tf.nn.l2_loss(W_conv3_policy, name=prefixize('l2_layer3_policy'))
+l2_loss_layer_4_policy = tf.nn.l2_loss(W_conv4_policy, name=prefixize('l2_layer4_policy'))
 
-l2_error_total = REGULARIZER_CONSTANT * (l2_loss_layer_1 + l2_loss_layer_2 + 
-                    l2_loss_layer_3 + l2_loss_layer_4)
+l2_error_total_policy = REGULARIZER_CONSTANT * (l2_loss_layer_1_policy + l2_loss_layer_2_policy + 
+                    l2_loss_layer_3_policy + l2_loss_layer_4_policy)
 
 negative_mean_square_policy = -1.0 * mean_square_policy
+
+AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
+# tf.train.MomentumOptimizer(0.01, 0.1, name=prefixize('momentum_policy'))
+train_step_winning_policy = AdamOptimizer_policy.minimize(mean_square_policy)
+
+train_step_losing_policy = AdamOptimizer_policy.minimize(negative_mean_square_policy)
+
+# MomentumOptimizer_forlosing_policy = tf.train.MomentumOptimizer(0.01, 0.1, name=prefixize('momentum_policy'))
+
+MomentumOptimizer_learnmoves_policy = tf.train.MomentumOptimizer(0.001, 0.1, name=prefixize('momentum_learnmoves_policy'))
+train_step_learnmoves_policy = MomentumOptimizer_learnmoves_policy.minimize(mean_square_policy)
+
+
+GradientOptimizer_l2_policy = tf.train.GradientDescentOptimizer(0.0005, name=prefixize('l2_optimizer_policy'))
+train_step_l2_reg_policy = GradientOptimizer_l2_policy.minimize(l2_error_total)
+
+
 
 # total_error = mean_square_policy + l2_error_total
 
@@ -314,102 +275,75 @@ negative_mean_square_policy = -1.0 * mean_square_policy
 
 # # MomentumOptimizer_forlosing_policy = tf.train.MomentumOptimizer(0.01, 0.1, name=prefixize('momentum_policy'))
 
-# MomentumOptimizer_learnmoves = tf.train.MomentumOptimizer(0.0005, 0.1, name=prefixize('momentum_learnmoves_policy'))
-# train_step_learnmoves = MomentumOptimizer_policy.minimize(mean_square_policy)
-
-AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
-# tf.train.MomentumOptimizer(0.01, 0.1, name=prefixize('momentum_policy'))
-train_step_winning_policy = AdamOptimizer_policy.minimize(mean_square_policy)
-
-train_step_losing_policy = AdamOptimizer_policy.minimize(negative_mean_square_policy)
-
-# MomentumOptimizer_forlosing_policy = tf.train.MomentumOptimizer(0.01, 0.1, name=prefixize('momentum_policy'))
-
-MomentumOptimizer_learnmoves = tf.train.MomentumOptimizer(0.001, 0.1, name=prefixize('momentum_learnmoves_policy'))
-train_step_learnmoves = MomentumOptimizer_learnmoves.minimize(mean_square_policy)
-
-
-GradientOptimizer_l2 = tf.train.GradientDescentOptimizer(0.0005, name=prefixize('l2_optimizer_policy'))
-train_step_l2_reg = GradientOptimizer_l2.minimize(l2_error_total)
-
-
-
-# I feel like I need another one for legal moves, but I'm not SURE I do. Because there
-# will be two different errors. But maybe it's just a goal thing.
-
-
-# mean_square_policy = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(softmax_output_policy, softmax_output_goal_policy), reduction_indices=[1]), name=prefixize("mean_square_policy"))
-
-# sum_of_legal_probs_policy = tf.reduce_sum(legal_softmax_output_policy, reduction_indices=[1], keep_dims=True)
-# normalized_legal_softmax_output_policy = legal_softmax_output_policy / sum_of_legal_probs_policy
-
-# softmax_output_policy = softmax_with_temp(h_fc1_policy, softmax_temperature_policy, suffix="softmax_output_policy")
+# MomentumOptimizer_learnmoves_policy = tf.train.MomentumOptimizer(0.0005, 0.1, name=prefixize('momentum_learnmoves_policy'))
+# train_step_learnmoves_policy = MomentumOptimizer_policy.minimize(mean_square_policy)
 
 
 
 """
-b_conv4_policy = bias_variable([1], suffix="b_conv4_policy")
-h_conv4_policy = tf.nn.elu(conv2d(h_conv3_policy, W_conv4_policy, padding="SAME") + b_conv4_policy, name=prefixize("h_conv4_policy"))
+Inputs VALUE
+"""
 
-# W_conv5_policy = weight_variable([3,3,20,1], suffix="W_conv5_policy")
-# b_conv5_policy = bias_variable([20], suffix="b_conv5_policy")
-# h_conv5_policy = tf.nn.elu(conv2d(h_conv4_policy, W_conv5_policy, padding="SAME") + b_conv5_policy, name=prefixize("h_conv5_policy"))
-
-
-
-h_conv5_flat_policy = tf.reshape(h_conv5_policy, [-1, BOARD_SIZE*BOARD_SIZE*20], name=prefixize("h_conv2_flat_policy"))
-
-W_fc1_policy = weight_variable([BOARD_SIZE*BOARD_SIZE*20, BOARD_SIZE*BOARD_SIZE + 1], suffix="W_fc1_policy")
-b_fc1_policy = bias_variable([BOARD_SIZE*BOARD_SIZE + 1], suffix="b_fc1_policy")
-h_fc1_policy = tf.nn.elu(tf.matmul(h_conv5_flat_policy, W_fc1_policy) + b_fc1_policy, name="h_fc1_policy")
-
-
-softmax_output_policy = softmax_with_temp(h_fc1_policy, softmax_temperature_policy, suffix="softmax_output_policy")
-
-legal_softmax_output_policy = tf.mul(softmax_output_policy, legal_sensible_moves_map_policy)
-sum_of_legal_probs_policy = tf.reduce_sum(legal_softmax_output_policy, reduction_indices=[1], keep_dims=True)
-normalized_legal_softmax_output_policy = legal_softmax_output_policy / sum_of_legal_probs_policy
-# The normalized_legal_softmax_output_policy is the thing you want to
-# return for get_best_move, or for choosing your next move in a game.
-
-# masked_softmax_output_policy = tf.mul(softmax_output_policy, training_mask_policy)
-# 
-
-mean_square_policy = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(softmax_output_policy, softmax_output_goal_policy), reduction_indices=[1]), name=prefixize("mean_square_policy"))
-l2_loss_layer_1 = tf.nn.l2_loss(W_conv1_policy, name=prefixize('l2_layer1'))
-l2_loss_layer_2 = tf.nn.l2_loss(W_conv2_policy, name=prefixize('l2_layer2'))
-l2_loss_layer_3 = tf.nn.l2_loss(W_conv3_policy, name=prefixize('l2_layer3'))
-l2_loss_layer_4 = tf.nn.l2_loss(W_conv4_policy, name=prefixize('l2_layer4'))
-l2_loss_layer_5 = tf.nn.l2_loss(W_conv5_policy, name=prefixize('l2_layer5'))
-
-
-# tf.contrib.layers.l2_regularizer(REGULARIZER_CONSTANT)#, name=prefixize("r1_policy"))
-# l2_loss_layer_2 = tf.contrib.layers.l2_regularizer(REGULARIZER_CONSTANT)#, name=prefixize("r1_policy"))
-# l2_loss_layer_3 = tf.contrib.layers.l2_regularizer(REGULARIZER_CONSTANT)#, name=prefixize("r1_policy"))
-# l2_loss_layer_4 = tf.contrib.layers.l2_regularizer(REGULARIZER_CONSTANT)#, name=prefixize("r1_policy"))
-# l2_loss_layer_5 = tf.contrib.layers.l2_regularizer(REGULARIZER_CONSTANT)#, name=prefixize("r1_policy"))
-
-l2_error_total = REGULARIZER_CONSTANT * (l2_loss_layer_1 + l2_loss_layer_2 + 
-                l2_loss_layer_3 + l2_loss_layer_4 + l2_loss_layer_5)
-
-total_error = mean_square_policy + l2_error_total
-
-
-# AdamOptimizer_policy = tf.train.AdamOptimizer(1e-4)
-# _policy(learning_rate=0.01, momentum=0.9)
-
-
-MomentumOptimizer_policy = tf.train.MomentumOptimizer(0.01, 0.1, name=prefixize('momentum_policy'))
-train_step_policy = MomentumOptimizer_policy.minimize(total_error)
-
-# AdamOptimizer = tf.train.AdamOptimizer(1e-4)
-# train_step_policy = AdamOptimizer.minimize(total_error)
-
-MomentumOptimizer_learnmoves = tf.train.MomentumOptimizer(0.01, 0.1, name=prefixize('momentum_learnmoves_policy'))
-train_step_learnmoves = MomentumOptimizer_policy.minimize(total_error)
+x_value = tf.placeholder(tf.float32, [None, BOARD_SIZE,BOARD_SIZE, NUM_FEATURES], name=prefixize('x_value'))
+legal_sensible_moves_map_value = tf.placeholder(tf.float32, [None, BOARD_SIZE,BOARD_SIZE], name=prefixize('legal_sensible_moves_map_value'))
+target_value = tf.placeholder(tf.float32, [None, 1], name=prefixize("target_value"))
 
 
 """
+VALUE NETWORK VARIABLES
+"""
+
+# x_image_value = tf.reshape(x_value, (-1,BOARD_SIZE,BOARD_SIZE,NUM_FEATURES), name=prefixize("x_image_value"))
+
+W_conv1_value = weight_variable([3,3,NUM_FEATURES,20], suffix="W_conv1_value")
+b_conv1_value = bias_variable([20], suffix="b_conv1_value")
+h_conv1_value = tf.nn.elu(conv2d(x_value, W_conv1_value, padding="SAME") + b_conv1_value, name=prefixize("h_conv1_value"))
+
+W_conv2_value = weight_variable([3,3,20,20], suffix="W_conv2_value")
+b_conv2_value = bias_variable([20], suffix="b_conv2_value")
+h_conv2_value = tf.nn.elu(conv2d(h_conv1_value, W_conv2_value, padding="SAME") + b_conv2_value, name=prefixize("h_conv2_value"))
+
+W_conv3_value = weight_variable([3,3,20,20], suffix="W_conv3_value")
+b_conv3_value = bias_variable([20], suffix="b_conv3_value")
+h_conv3_value = tf.nn.elu(conv2d(h_conv2_value, W_conv3_value, padding="SAME") + b_conv3_value, name=prefixize("h_conv3_value"))
+
+W_conv4_value = weight_variable([3,3,20,1], suffix="W_conv4_value")
+b_conv4_value = bias_variable([BOARD_SIZE,BOARD_SIZE,1], suffix="b_conv4_value")
+h_conv4_value = tf.nn.elu(conv2d(h_conv3_value, W_conv4_value, padding="SAME" + b_conv4_value, name=prefixize('h_conv4_value')))
+
+# Reshape into a flattened board. That's so small! I want another layer, but I'm not
+# sure I can handle it or need it. For now, NO THANKS.
+h_conv4_flattened_value = tf.reshape([-1, BOARD_SIZE*BOARD_SIZE])
+W_fc1_value = weight_variable([25,1], suffix="W_fc1_value")
+b_fc1_value = bias_variable([1], suffix="b_fc1_value")
+output_value = tf.tanh(tf.matmul(h_conv4_flattened_value, W_fc1_value) + b_fc1_value)
+
+mean_square_value = tf.reduce_mean(tf.squared_difference(output_value, target_value), name=prefixize('mean_square_value'))
+
+MomentumOptimizer_value = tf.train.MomentumOptimizer(0.01, 0.9, name=prefixize('momentum_optimize_value'))
+train_step_value = MomentumOptimizer_value.minimize(mean_square_value)
+
+
+
+
+l2_loss_layer_1_value = tf.nn.l2_loss(W_conv1_value, name=prefixize('l2_layer1_value'))
+l2_loss_layer_2_value = tf.nn.l2_loss(W_conv2_value, name=prefixize('l2_layer2_value'))
+l2_loss_layer_3_value = tf.nn.l2_loss(W_conv3_value, name=prefixize('l2_layer3_value'))
+l2_loss_layer_4_value = tf.nn.l2_loss(W_conv4_value, name=prefixize('l2_layer4_value'))
+l2_loss_layer_5_value = tf.nn.l2_loss(W_fc1_value, name=prefixize('l2_layer5_value'))
+
+l2_error_total_value = REGULARIZER_CONSTANT * (l2_loss_layer_1_value + l2_loss_layer_2_value + 
+                    l2_loss_layer_3_value + l2_loss_layer_4_value + l2_loss_layer_5_value)
+
+
+GradientOptimizer_l2_value = tf.train.GradientDescentOptimizer(0.0005, name=prefixize('l2_optimizer_value'))
+train_step_l2_reg_value = GradientOptimizer_l2_value.minimize(l2_error_total_value)
+
+
+"""
+The rest of everything
+"""
+
 
 
 all_variables = tf.all_variables()
@@ -450,8 +384,7 @@ I should be good then too.
 """
 
 
-class Convbot_FIVE_SPLIT_FEATURES(GoBot):
-
+class Convbot_FIVE_POLICY_VALUE_NEWEST(GoBot):
   def __init__(self, folder_name=None, batch_num=0):
     GoBot.__init__(self)
     self.board_shape = (BOARD_SIZE,BOARD_SIZE)
@@ -901,7 +834,7 @@ class Convbot_FIVE_SPLIT_FEATURES(GoBot):
         })
         print("MSE=" + str(mse))
     print("training L2_REG")
-    self.sess.run([train_step_l2_reg], feed_dict={
+    self.sess.run([train_step_l2_reg_policy], feed_dict={
       # x_policy: all_inputs,
       # softmax_output_goal_policy: valid_moves_output_goals
     })
@@ -1143,7 +1076,7 @@ def board_to_input_transform_policy(board_matrix, all_previous_boards, current_t
 
 
 def make_path_from_folder_and_batch_num(folder_name, batch_num):
-  save_path = os.path.join(this_dir + '/saved_models/convnet_split_feats', str(folder_name))
+  save_path = os.path.join(this_dir + '/saved_models/convnet_pol_val_good', str(folder_name))
   file_name = 'trained_on_batch_' + str(batch_num) + '.ckpt'
   save_path = os.path.join(save_path, file_name)
   return save_path
@@ -1167,7 +1100,7 @@ def play_game(load_data_1, load_data_2):
 
   folder_1, batch_num_1 = load_data_1 
   folder_2, batch_num_2 = load_data_2
-  # load_path_1 os.path.join('./saved_models/convnet_split_feats',str(folder_1),)
+  # load_path_1 os.path.join('./saved_models/convnet_pol_val_good',str(folder_1),)
   # load_path_1 = make_path_from_folder_and_batch_num(folder_1, batch_num_1)
   # load_path_2 = make_path_from_folder_and_batch_num(folder_2, batch_num_2)
 
@@ -1245,7 +1178,7 @@ def create_random_starters_for_folder(folder_name):
 
 def create_random_starters_for_folders(folder_name_list):
   for fn in folder_name_list:
-    full_folder = os.path.join(this_dir, 'saved_models', 'convnet_split_feats', fn)
+    full_folder = os.path.join(this_dir, 'saved_models', 'convnet_pol_val_good', fn)
     print(full_folder)
     try:
       os.makedirs(full_folder)
@@ -1260,7 +1193,7 @@ def create_random_starters_for_folders(folder_name_list):
 
 
 def get_largest_batch_in_folder(f_name):
-  folder = os.path.join(this_dir, 'saved_models', 'convnet_split_feats')
+  folder = os.path.join(this_dir, 'saved_models', 'convnet_pol_val_good')
   filename = os.path.join(folder, f_name,'largest.txt')
   f = open(filename, 'r')
   content = f.read()
@@ -1271,7 +1204,7 @@ def get_largest_batch_in_folder(f_name):
 
 
 def set_largest_batch_in_folder(f_name, batch_num):
-  folder = os.path.join(this_dir, 'saved_models', 'convnet_split_feats')
+  folder = os.path.join(this_dir, 'saved_models', 'convnet_pol_val_good')
   filename = os.path.join(folder, f_name,'largest.txt')
   f = open(filename, 'w')
   f.write(str(batch_num))
@@ -1452,7 +1385,7 @@ def train_on_each_batch_lots(f_name):
         softmax_output_goal_policy : outputs
       })
 
-      l2_err, who_cares = convbot.sess.run([l2_error_total, train_step_l2_reg], feed_dict={
+      l2_err, who_cares = convbot.sess.run([l2_error_total, train_step_l2_reg_policy], feed_dict={
 
       })
       # shouldn't need a dict?
@@ -1553,7 +1486,7 @@ if __name__ == '__main__':
 
 
   # folder_name = "test_lotsonone"
-  # dirpath = os.path.join(this_dir + '/saved_models/convnet_split_feats', folder_name)
+  # dirpath = os.path.join(this_dir + '/saved_models/convnet_pol_val_good', folder_name)
   # if not os.path.isdir(dirpath):
   #   os.makedirs(dirpath)
   #   create_random_starters_for_folder(folder_name)
