@@ -16,7 +16,6 @@ from copy import deepcopy as copy
 import random
 import json
 
-
 this_dir = os.path.dirname(os.path.realpath(__file__))
 
 

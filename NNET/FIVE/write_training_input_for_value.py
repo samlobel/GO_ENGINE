@@ -23,14 +23,37 @@ def random_board_iterator():
         print "fail on to_yield=" + str(to_yield)
   print 'exit iterator'
 
-def board_to_result_obj(board):
+def board_to_result_obj(board, games_to_average=5):
+  """
+  There's some trickiness here. Because, it's not actually about who wins,
+  its about whether YOU win. And for the purposes of the policy network, YOU
+  are the person who just moved. Because, you look ahead one move and you say,
+  which has the best value for ME, the person before that board? So,
+  if the next person to go is black, it's the value for WHITE. Meaning that 
+  if determine_winner gives you 1, and it's white's (-1) turn now, that is good.
+  
+  white_to_go_value : chance BLACK wins given that white is to go next.
+  -- should just be determine_winner().
+  black_to_go_value : chance WHITE wins given that black is to go next.
+  -- should be -1 * determine_winner(). Because if black wins, that's bad.
+
+  """
   np_board = np.asarray(board)
-  result_for_black = util.determine_random_winner_of_board(np_board, 1, [])
-  result_for_white = util.determine_random_winner_of_board(np_board, -1, [])
+  black_to_go_total_value = 0.0
+  white_to_go_total_value = 0.0
+  for i in range(games_to_average):
+    black_to_go_total_value += util.determine_random_winner_of_board(np_board, 1, [])
+    white_to_go_total_value += util.determine_random_winner_of_board(np_board, -1, [])
+
+  black_average_results = (black_total_results + 0.0) / games_to_average
+  white_average_results = (white_total_results + 0.0) / games_to_average
+
+  # result_for_black = util.determine_random_winner_of_board(np_board, 1, [])
+  # result_for_white = util.determine_random_winner_of_board(np_board, -1, [])
   return {
     'board' : board,
-    'blacks_first_result' : result_for_black,
-    'whites_first_result' : result_for_white
+    'blacks_first_result' : black_average_results,
+    'whites_first_result' : white_average_results
   }
 
 def read_boards_write_results(write_path):
