@@ -28,7 +28,7 @@ def write_random_board(num_moves):
 
 if __name__ == '__main__':
   num = 0
-  for cycle in xrange(4500):
+  for cycle in xrange(9000):
   # while True:
     num += 1
     print "cycle complete " + str(num)
