@@ -1255,6 +1255,35 @@ def random_board_iterator():
   print("exit iterator")
 
 
+def random_board_results_iterator():
+  with open('./random_boards.txt') as f:
+    while True:
+      to_yield = [f.readline() for i in xrange(100)]
+      if to_yield[-1] == '':
+        print('done with iteration, hit end of file.')
+        # print(to_yield)
+        break
+      to_yield = [json.loads(x.strip()) for x in to_yield]
+      yield to_yield
+  print("exit iterator")
+
+
+def random_board_results_input_output_iterator():
+  for results_obj in random_board_results_iterator():
+    to_yield = []
+    for result in results_obj:
+      board = result['board']
+      # input_black = 
+      board_matrix = np.asarray(board, dtype=np.float32)
+      # input_black = board_to
+      # target_black_next
+    continue
+
+
+
+
+
+
 # def make_mirror_images(list_of_boards):
 #   # Makes an assumption that it's Nx9x9
 #   to_return = []
@@ -1420,6 +1449,60 @@ def train_on_each_batch_lots(f_name):
 
   print(error_list)
 
+
+
+def train_on_random_board_results(f_name):
+  largest = get_largest_batch_in_folder(f_name)
+  convbot = Convbot_FIVE_SPLIT_FEATURES(folder_name=f_name, batch_num=largest)
+  error_list = []
+  l2_error_list = []
+  num = 0
+  for result_obj_list in random_board_iterator():
+
+    inputs = get_inputs_from_boards(board_list)
+    outputs = get_output_goals_for_boards(board_list)
+    if len(inputs) != len(outputs):
+      raise Exception("lengths should be the same!")
+    new_inputs = []
+    new_outputs = []
+    for ins, outs in zip(inputs, outputs):
+      if np.array_equal(outs, np.zeros(outs.shape)):
+        print('caught a zero matrix! Aha!')
+        continue
+      new_inputs.append(ins)
+      new_outputs.append(outs)
+    inputs = np.asarray(new_inputs, dtype=np.float32)
+    outputs = np.asarray(new_outputs, dtype=np.float32)
+
+    for i in range(50):
+      num += 1
+      # print("starting training calculation")
+      err, who_cares = convbot.sess.run([mean_square_policy, train_step_winning_policy], feed_dict={
+        x_policy : inputs,
+        softmax_output_goal_policy : outputs
+      })
+
+      l2_err, who_cares = convbot.sess.run([l2_error_total, train_step_l2_reg_policy], feed_dict={
+
+      })
+      if num % 10 == 0:
+        print("done with " + str(num) + " batches")
+        error_list.append(err)
+        l2_error_list.append(l2_err)
+        print('error:')
+        print(error_list)
+        same_fname, new_largest = convbot.save_in_next_slot()
+        set_largest_batch_in_folder(same_fname, new_largest)
+        convbot.sess.close()
+        largest = new_largest
+        print("one that just printed is " + str(largest - 1))
+        convbot = Convbot_FIVE_SPLIT_FEATURES(folder_name=f_name, batch_num=largest)
+      if len(error_list) > 200:
+        print('shortening error lists')
+        error_list = error_list[0::2]
+        l2_error_list = l2_error_list[0::2]
+
+  print(error_list)
 
 def test_move_accuracy(f_name, batch=None):
   if batch is None:

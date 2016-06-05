@@ -303,3 +303,4 @@ After that, I train the policy network on the value network. There are two possi
 
 
 
+I spent a LOT of time on this, but it was stupid, considering that computation is the main problem. Maybe two threads would help because of hyperthreading, but it's computationally blocked, and threading does nothing for that. I'm a doofus for that one, really.
