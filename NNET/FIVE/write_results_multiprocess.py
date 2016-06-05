@@ -123,10 +123,10 @@ def worker_transform(b_queue, r_queue):
       break
 
 def worker_writer(r_queue):
-  filename_out = './random_board_results_from_queue.txt'
+  filename_out = './random_board_results.txt'
   i = 0
   time_now = time.time()
-  with open(filename_out, 'w', buffering=1) as f_out:
+  with open(filename_out, 'a', buffering=1) as f_out:
     while True:
       try:
         i += 1
@@ -134,9 +134,9 @@ def worker_writer(r_queue):
         json_result = json.dumps(result_obj)
         f_out.write(json_result)
         f_out.write('\n')
-        if i % 100 == 0:
+        if i % 25 == 0:
           print "wrote out " + str(i)
-        # if i % 200 == 0:
+        if i % 100 == 0:
           print "DONE. took " + str(time.time() - time_now) + " time"
       except Exception:
         print 'exception in writer!'
@@ -145,52 +145,15 @@ def worker_writer(r_queue):
 
 
 
-
-"""
-I should make something for processing, which is the same as threading but BETTER.
-
-"""
-
-# def test_1(q):
-#   with open('samalamalam.txt','a') as f:
-#     f.write(q['1'])
-#     f.write('\n')
-#     f.write(q['2'])
-#     f.write('\n')
-#     f.write(q['3'])
-#   print 'complete'
-
-# def test_1(q_in, q_out):
-#   while True:
-#     elem = q_in.get(block=True, timeout=10)
-#     neg = elem * -1
-#     q_out.put(neg)
-#     time.sleep(0.1)
-
-
-# def queue_loader(q_in):
-#   i = 0
-#   while True:
-#     q_in.put(i)
-#     i += 1
-
-# def queue_unloader(q_out):
-#   while True:
-#     elem = q_out.get(block=True, timeout=10)
-#     print "elem out: "
-#     print elem
-
-
 if __name__ == '__main__':
   print 'starting'
   BOARD_QUEUE = Queue(maxsize=100)
   BOARD_RESULT_QUEUE = Queue(maxsize=100)
-  NUM_WORKERS = sys.argv[1]
-  if NUM_WORKERS:
-    NUM_WORKERS = int(NUM_WORKERS)
-  else:
-    NUM_WORKERS = 4
-  # NUM_WORKERS = 1
+  NUM_WORKERS = None
+  try:
+    NUM_WORKERS = int(sys.argv[1])
+  except:
+    NUM_WORKERS=4
   print 'num workers: ' + str(NUM_WORKERS)
   proc_in = Process(target=worker_loader, args=[BOARD_QUEUE])
   proc_in.start()
@@ -203,48 +166,6 @@ if __name__ == '__main__':
   print "processes kicked off"
 
 
-
-
-
-
-
-
-
-
-
-
-   
-
-
-
-
-
-
-# if __name__ == '__main__':
-  # print 'read_boards: '
-  # read_boards_write_results('./random_board_results.txt')
-  # print 'done!'
-
-  # NUM_TRANSFORM_THREADS = 4
-
-  # print 'read boards:'
-  # T_read = Thread(target=worker_loader)
-  # T_read.daemon = True
-  # T_read.start()
-  # T_write = Thread(target=worker_writer)
-  # T_write.daemon = True
-  # T_write.start()
-  # for i in range(NUM_TRANSFORM_THREADS):
-  #   T_write = Thread(target=worker_transform)
-  #   T_write.daemon = True
-  #   T_write.start()
-  #   print 'thread ' + str(i) + ' kicked off.'
-
-  # print 'threads kicked off.'
-  # BOARD_QUEUE.join()
-  # BOARD_RESULT_QUEUE.join()
-
-  # print 'done'
 
 
 
