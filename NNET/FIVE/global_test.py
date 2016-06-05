@@ -1,3 +1,0 @@
-sammy
-sosa
-boom bam
