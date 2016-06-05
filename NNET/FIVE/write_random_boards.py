@@ -75,7 +75,7 @@ def worker_writer(r_queue):
         i += 1
         if i % 1000 == 0:
           print "boards written: " + str(i)
-        if i % 1000 == 0:
+        if i % 5000 == 0:
           print "time taken: " + str(time.time() - time_now)
       except Exception:
         print 'end of results queue!'

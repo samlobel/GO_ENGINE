@@ -1069,6 +1069,86 @@ def board_to_input_transform_policy(board_matrix, all_previous_boards, current_t
   # return flattened_input
 
 
+def board_to_input_transform_value(board_matrix, all_previous_boards, current_turn):
+  """
+  Same thing as above, right? Should I have one that says which color you are,
+  actually? Yes, because of the handicap thing.
+
+  I should get this ready for features, but I really don't want to.
+  Remember, this is assuming that it's white's turn? No. For policy,
+  it's black's turn. For value, it's white's turn. I think that means 
+  I should have two of these functions.
+  How can I still not be sure if I have a *-1 error somewhere? That's
+  ridiculous.
+
+  ASSUMES THIS PLAYER IS BLACK. IMPORTANT FOR LEGAL_MOVE MAP.
+
+  NOPE, IT DOESN'T. BUT IT TRANSFORMS IT SO THAT THE OUTPUT THINKS IT IS.
+
+  Why in the world is this a class method when it doesn't use anything from the
+  class? I'm going to make it not-class.
+
+  """
+
+  # legal_moves_map = util.output_valid_moves_boardmap(board_matrix, all_previous_boards, current_turn)
+
+
+  # You know, I really don't like this whole reshaping nonsense. I'm going to skip it I think.
+  legal_sensible_move_map = util.output_valid_sensible_moves_boardmap(board_matrix, all_previous_boards, current_turn)
+  liberty_map = util.output_liberty_map(board_matrix)
+
+
+  # This is about to become a DOOZY
+  board_this_player, board_blank, board_other_player = split_board(board_matrix, current_turn)
+  where_me_gt_two, where_me_two, where_me_one,\
+      where_they_one, where_they_two, where_they_gt_two =\
+                        split_liberties(liberty_map, current_turn)
+
+  ones_layer = np.ones_like(board_matrix)
+  zeros_layer = np.zeros_like(board_matrix)
+
+  feature_array = np.asarray([
+    board_this_player,
+    board_blank, 
+    board_other_player,
+    where_me_gt_two,
+    where_me_two,
+    where_me_one,
+    where_they_one,
+    where_they_two,
+    where_they_gt_two,
+    legal_sensible_move_map,
+    ones_layer,
+    zeros_layer
+  ], dtype=np.float32)
+
+  # feature_array = None
+  # if current_turn == 1:
+  #   feature_array = np.asarray([board_matrix, legal_sensible_move_map, liberty_map])
+  # else:
+  #   feature_array = np.asarray([-1 *board_matrix, legal_sensible_move_map, -1 * liberty_map])
+
+  # SHIT. This isn't exactly right. This has shape (3, 5, 5) I need something that is 
+  # of the form: (5,5,3). Looks like Transpose somehow does EXACTLY what I want.
+  feature_array = feature_array.T
+
+  flattened_array = feature_array.flatten()
+  for i in range(len(flattened_array)):
+    if flattened_array[i] < 0:
+      print("Flattened array element less than zero!")
+      # print(feature_array)
+      print(flattened_array[i])
+      raise Exception('no element can be less than zero!')
+  # print('checks out')
+  return feature_array
+
+  # feature_array = feature_array.T
+  # flattened_input = feature_array.reshape((1, BOARD_SIZE*BOARD_SIZE, NUM_FEATURES))
+  
+  # return flattened_input
+
+
+
 
 
 
