@@ -4,9 +4,10 @@ import numpy as np
 import sys
 import os
 
-from Queue import Queue
+# from Queue import Queue
 import time
-from threading import Thread
+from multiprocessing import Process, Queue
+# from threading import Thread
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../.'))
 
@@ -90,9 +91,9 @@ def read_boards_write_results(write_path):
 #   result_obj = board_to_result_obj(board)
 
 
-BOARD_QUEUE = Queue(maxsize=100)
+# BOARD_QUEUE = Queue(maxsize=100)
 
-def worker_loader():
+def worker_loader(b_queue):
   i = 0
   filename_in = './random_boards.txt'
   with open(filename_in, 'r') as f_in:
@@ -104,24 +105,24 @@ def worker_loader():
         print 'END OF FILE'
         break
       board_obj = json.loads(line)
-      BOARD_QUEUE.put(board_obj)
+      b_queue.put(board_obj)
       if i % 100 == 0:
         print "read in " + str(i)
       
 
-BOARD_RESULT_QUEUE = Queue(maxsize=100)
+# BOARD_RESULT_QUEUE = Queue(maxsize=100)
 
-def worker_transform():
+def worker_transform(b_queue, r_queue):
   while True:
     try:
-      board_obj = BOARD_QUEUE.get(block=True, timeout=10)
+      board_obj = b_queue.get(block=True, timeout=10)
       result_obj = board_to_result_obj(board_obj)
-      BOARD_RESULT_QUEUE.put(result_obj)
+      r_queue.put(result_obj)
     except Exception:
       print 'exception in writer!'
       break
 
-def worker_writer():
+def worker_writer(r_queue):
   filename_out = './random_board_results_from_queue.txt'
   i = 0
   time_now = time.time()
@@ -129,14 +130,14 @@ def worker_writer():
     while True:
       try:
         i += 1
-        result_obj = BOARD_RESULT_QUEUE.get(block=True, timeout=10)
+        result_obj = r_queue.get(block=True, timeout=10)
         json_result = json.dumps(result_obj)
         f_out.write(json_result)
         f_out.write('\n')
         if i % 100 == 0:
           print "wrote out " + str(i)
-        if i % 200 == 0:
-          print "DONE. took " + str(time.time()) + " time"
+        # if i % 200 == 0:
+          print "DONE. took " + str(time.time() - time_now) + " time"
       except Exception:
         print 'exception in writer!'
         break
@@ -150,13 +151,79 @@ I should make something for processing, which is the same as threading but BETTE
 
 """
 
+# def test_1(q):
+#   with open('samalamalam.txt','a') as f:
+#     f.write(q['1'])
+#     f.write('\n')
+#     f.write(q['2'])
+#     f.write('\n')
+#     f.write(q['3'])
+#   print 'complete'
 
+# def test_1(q_in, q_out):
+#   while True:
+#     elem = q_in.get(block=True, timeout=10)
+#     neg = elem * -1
+#     q_out.put(neg)
+#     time.sleep(0.1)
+
+
+# def queue_loader(q_in):
+#   i = 0
+#   while True:
+#     q_in.put(i)
+#     i += 1
+
+# def queue_unloader(q_out):
+#   while True:
+#     elem = q_out.get(block=True, timeout=10)
+#     print "elem out: "
+#     print elem
 
 
 if __name__ == '__main__':
-  print 'read_boards: '
-  read_boards_write_results('./random_board_results.txt')
-  print 'done!'
+  print 'starting'
+  BOARD_QUEUE = Queue(maxsize=100)
+  BOARD_RESULT_QUEUE = Queue(maxsize=100)
+  NUM_WORKERS = sys.argv[1]
+  if NUM_WORKERS:
+    NUM_WORKERS = int(NUM_WORKERS)
+  else:
+    NUM_WORKERS = 4
+  # NUM_WORKERS = 1
+  print 'num workers: ' + str(NUM_WORKERS)
+  proc_in = Process(target=worker_loader, args=[BOARD_QUEUE])
+  proc_in.start()
+  proc_out = Process(target=worker_writer, args=[BOARD_RESULT_QUEUE])
+  proc_out.start()
+  for i in range(NUM_WORKERS):
+    proc_transform = Process(target=worker_transform, args=[BOARD_QUEUE,BOARD_RESULT_QUEUE])
+    proc_transform.start()
+    print "process kicked off: " + str(i)
+  print "processes kicked off"
+
+
+
+
+
+
+
+
+
+
+
+
+   
+
+
+
+
+
+
+# if __name__ == '__main__':
+  # print 'read_boards: '
+  # read_boards_write_results('./random_board_results.txt')
+  # print 'done!'
 
   # NUM_TRANSFORM_THREADS = 4
 
