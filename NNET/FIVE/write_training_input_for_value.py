@@ -149,30 +149,30 @@ def worker_writer():
 
 
 if __name__ == '__main__':
-  # print 'read_boards: '
-  # read_boards_write_results('./random_board_results.txt')
-  # print 'done!'
+  print 'read_boards: '
+  read_boards_write_results('./random_board_results.txt')
+  print 'done!'
 
-  NUM_TRANSFORM_THREADS = 4
+  # NUM_TRANSFORM_THREADS = 4
 
-  print 'read boards:'
-  T_read = Thread(target=worker_loader)
-  T_read.daemon = True
-  T_read.start()
-  T_write = Thread(target=worker_writer)
-  T_write.daemon = True
-  T_write.start()
-  for i in range(NUM_TRANSFORM_THREADS):
-    T_write = Thread(target=worker_transform)
-    T_write.daemon = True
-    T_write.start()
-    print 'thread ' + str(i) + ' kicked off.'
+  # print 'read boards:'
+  # T_read = Thread(target=worker_loader)
+  # T_read.daemon = True
+  # T_read.start()
+  # T_write = Thread(target=worker_writer)
+  # T_write.daemon = True
+  # T_write.start()
+  # for i in range(NUM_TRANSFORM_THREADS):
+  #   T_write = Thread(target=worker_transform)
+  #   T_write.daemon = True
+  #   T_write.start()
+  #   print 'thread ' + str(i) + ' kicked off.'
 
-  print 'threads kicked off.'
-  BOARD_QUEUE.join()
-  BOARD_RESULT_QUEUE.join()
+  # print 'threads kicked off.'
+  # BOARD_QUEUE.join()
+  # BOARD_RESULT_QUEUE.join()
 
-  print 'done'
+  # print 'done'
 
 
 
