@@ -214,7 +214,10 @@ def test_move_is_eye():
 
 
 if __name__ == '__main__':
-  test_move_is_eye()
+  # test_move_is_eye()
+
+  print output_all_valid_sensible_moves(b7_4x4, [], 1)
+  print output_all_valid_sensible_moves(b7_4x4, [], -1)
 
   # test_boards_are_equal()
   # test_move_is_on_board()

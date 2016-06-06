@@ -28,7 +28,8 @@ from go_util import util
 # from NNET.NINE.convnet_only_policy import Convbot_NINE_PURE_POLICY
 
 # from NNET.NINE.convnet_movetrained_first import Convbot_NINE_POLICY_MOVETRAINED
-from NNET.FIVE.convnet_new import Convbot_FIVE_NEW
+# from NNET.FIVE.convnet_new import Convbot_FIVE_NEW
+from NNET.FIVE.convnet_better_policy_value import Convbot_FIVE_POLICY_VALUE_NEWEST
 
 from NNET.NINE.random_mover import Random_Mover
 
@@ -222,7 +223,9 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      self.board_metadata['black_AI'] = Convbot_FIVE_NEW(folder_name="1",batch_num=931)
+      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=1238)
+      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
+      # Convbot_FIVE_NEW(folder_name="1",batch_num=931)
 
       # Convbot_NINE_POLICY_MOVETRAINED(folder_name="3", batch_num=1)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
@@ -237,7 +240,8 @@ class Board:
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_25_batch.ckpt")
                 
     if self.board_metadata['white_player'] == 'AI':
-      self.board_metadata['white_AI'] = Convbot_FIVE_NEW(folder_name="3",batch_num=871)
+      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=1238)
+      # Convbot_FIVE_NEW(folder_name="3",batch_num=871)
       # Convbot_NINE_POLICY_MOVETRAINED(folder_name="1", batch_num=961)
 
 
@@ -305,7 +309,7 @@ class Board:
       print "no AI for player " + str(turn)
       return
 
-    # time.sleep(1.0)
+    time.sleep(1.0)
     best_move = the_ai.get_best_move(self.board_data, self.all_previous_boards, self.turn)
     print "best move: " + str(best_move) + " for turn: " + str(self.turn)
     if not util.move_is_valid(self.board_data, best_move, self.turn, self.all_previous_boards):

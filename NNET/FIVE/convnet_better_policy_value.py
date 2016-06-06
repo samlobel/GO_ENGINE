@@ -48,9 +48,9 @@ GLOBAL_TEMPERATURE = 1.0 #Since values range from -1 to 1,
 
 NUM_POLICY_GAMES_TO_SIMULATE_PER_BOARD = 5
 
-REGULARIZER_CONSTANT = 0.0001
+REGULARIZER_CONSTANT = 0.00001
 
-REGULARIZER_CONSTANT_VALUE = 0.0005
+REGULARIZER_CONSTANT_VALUE = 0.00005
 
 
 """
@@ -108,7 +108,8 @@ def weight_variable(shape, suffix):
   else:
     raise Exception('shape should be either 0 or 2!')
 
-  stddev_calc = (2.0 / (num_in + num_out))
+  # stddev_calc = (10.0 / (num_in + num_out))
+  stddev_calc = ( 2.0 / (num_in))**0.5
   print("std_dev for weights is " + str(stddev_calc))
 
   if suffix is None or type(suffix) is not str:
@@ -309,14 +310,14 @@ W_conv3_value = weight_variable([3,3,20,20], suffix="W_conv3_value")
 b_conv3_value = bias_variable([20], suffix="b_conv3_value")
 h_conv3_value = tf.nn.elu(conv2d(h_conv2_value, W_conv3_value, padding="SAME") + b_conv3_value, name=prefixize("h_conv3_value"))
 
-W_conv4_value = weight_variable([3,3,20,1], suffix="W_conv4_value")
-b_conv4_value = bias_variable([BOARD_SIZE,BOARD_SIZE,1], suffix="b_conv4_value")
+W_conv4_value = weight_variable([3,3,20,5], suffix="W_conv4_value")
+b_conv4_value = bias_variable([BOARD_SIZE,BOARD_SIZE,5], suffix="b_conv4_value")
 h_conv4_value = tf.nn.elu(conv2d(h_conv3_value, W_conv4_value, padding="SAME") + b_conv4_value, name=prefixize('h_conv4_value'))
 
 # Reshape into a flattened board. That's so small! I want another layer, but I'm not
 # sure I can handle it or need it. For now, NO THANKS.
-h_conv4_flattened_value = tf.reshape(h_conv4_value, [-1, BOARD_SIZE*BOARD_SIZE])
-W_fc1_value = weight_variable([25,1], suffix="W_fc1_value")
+h_conv4_flattened_value = tf.reshape(h_conv4_value, [-1, BOARD_SIZE*BOARD_SIZE*5])
+W_fc1_value = weight_variable([BOARD_SIZE*BOARD_SIZE*5,1], suffix="W_fc1_value")
 b_fc1_value = bias_variable([1], suffix="b_fc1_value")
 output_value = tf.tanh(tf.matmul(h_conv4_flattened_value, W_fc1_value) + b_fc1_value)
 
@@ -324,6 +325,9 @@ mean_square_value = tf.reduce_mean(tf.squared_difference(output_value, target_va
 
 MomentumOptimizer_value = tf.train.MomentumOptimizer(0.01, 0.9, name=prefixize('momentum_optimize_value'))
 train_step_value = MomentumOptimizer_value.minimize(mean_square_value)
+
+# AdamOptimizer_value = tf.train.AdamOptimizer(1e-4)
+# train_step_value = AdamOptimizer_value.minimize(mean_square_value)
 
 
 
@@ -432,7 +436,7 @@ class Convbot_FIVE_POLICY_VALUE_NEWEST(GoBot):
 
 
 
-  def get_best_move(self, board_matrix, all_previous_boards, current_turn):
+  def get_best_move_policy(self, board_matrix, all_previous_boards, current_turn):
 
     if (board_matrix is None) or not (current_turn in (-1,1)):
       raise Exception("Invalid inputs to get_best_move.")
@@ -475,6 +479,53 @@ class Convbot_FIVE_POLICY_VALUE_NEWEST(GoBot):
     # Now for some funky business, because its an array.
 
     # return from_index_to_move_tuple(best_move_index)
+
+  def get_best_move(self, board_matrix, all_previous_boards, current_turn):
+    """
+    I pass in the next person to go, but it gives me the value to the turn before it.
+    """
+    if (board_matrix is None) or not (current_turn in (-1,1)):
+      raise Exception("Invalid inputs to get_best_move.")
+    new_previous_list = list(all_previous_boards)
+    new_previous_list.append(board_matrix)
+    if len(all_previous_boards) == len(new_previous_list):
+      raise Exception('should be one longer! in get_best_move_value')
+    valid_sensible_moves = list(util.output_all_valid_sensible_moves(board_matrix, all_previous_boards, current_turn))
+    if len(valid_sensible_moves) == 0:
+      print('this means there are no valid moves left, returning None')
+      return None
+    inputs_boards = [util.update_board_from_move(board_matrix, move, current_turn) for move in valid_sensible_moves]
+    inputs = np.asarray([board_to_input_transform_value(board, new_previous_list, current_turn * -1) for board in inputs_boards], dtype=np.float32)
+    outputs = self.sess.run(output_value, feed_dict={
+      x_value : inputs
+    })
+
+    zipped = zip(outputs, valid_sensible_moves)
+    print(zipped)
+    best_move = max(zipped)[1]
+    return best_move
+
+
+
+
+
+
+    # valid_sensible_boardmap = util.output_valid_sensible_moves_boardmap(board_matrix, all_previous_boards, current_turn)
+    # zero_board = np.zeros((BOARD_SIZE,BOARD_SIZE))
+    # if zero_board.shape != valid_sensible_boardmap.shape:
+    #   raise Exception('Sam, rethink something, because these shapes should be equal.')
+    # if np.array_equal(valid_sensible_boardmap, np.zeros((BOARD_SIZE,BOARD_SIZE))):
+    #   print("This means that there are no valid moves left. Returning None.")
+    #   return None
+
+    # valid_sensible_boardmap = np.asarray([valid_sensible_boardmap], dtype=np.float32)
+
+    # best_move_index = None
+    # for i in range(BOARD_SIZE):
+    #   for j in range(BOARD_SIZE):
+    #     new_board = util.update_board_from_move(board_matrix, (i,j), current_turn)
+    #     inputs = board_to_input_transform_value
+
 
 
 
@@ -932,7 +983,7 @@ def split_liberties(liberty_map, current_turn):
         print(clipped)
         print("How could it not be in these?")
         raise Exception('clipped should have been in this')
-      val_map[clipped] = 1.0
+      val_map[clipped][i][j] = 1.0
 
   return where_me_gt_two, where_me_two, where_me_one,\
           where_they_one, where_they_two, where_they_gt_two
@@ -966,7 +1017,7 @@ def split_board(board_matrix, current_turn):
         print(val)
         print('how is that not in val map?')
         raise Exception('should only have -1,0,1 on board')
-      val_map[val] = 1.0
+      val_map[val][i][j] = 1.0
 
   return where_this_player, where_blank, where_other_player
 
@@ -1088,7 +1139,14 @@ def board_to_input_transform_value(board_matrix, all_previous_boards, current_tu
 
 
   # You know, I really don't like this whole reshaping nonsense. I'm going to skip it I think.
+  
+
   legal_sensible_move_map = util.output_valid_sensible_moves_boardmap(board_matrix, all_previous_boards, current_turn)
+  # print('input and legal moves: ')
+  # print(board_matrix)
+  # print(all_previous_boards)
+  # print(legal_sensible_move_map)
+
   liberty_map = util.output_liberty_map(board_matrix)
 
 
@@ -1340,7 +1398,7 @@ def random_board_iterator():
 def random_board_results_iterator():
   with open('./random_board_results.txt') as f:
     while True:
-      to_yield = [f.readline() for i in xrange(200)]
+      to_yield = [f.readline() for i in xrange(40)]
       if to_yield[-1] == '':
         print('done with iteration, hit end of file.')
         # print(to_yield)
@@ -1368,8 +1426,10 @@ def random_board_results_input_output_iterator():
       # print(result)
       board = result['board']
       board_matrix = np.asarray(board, dtype=np.float32)
+      # print(board)
       turn = random.choice([-1,1])
       inputs = board_to_input_transform_value(board_matrix, [], turn)
+      # print(inputs)
       output = [result[turn_map[turn]]]
       to_yield_input.append(inputs)
       to_yield_output.append(output)
@@ -1531,7 +1591,7 @@ def train_on_each_batch_lots(f_name):
       
       # print(error_list)
       # print(l2_error_list)
-      if num % 10 == 0:
+      if num % 20 == 0:
         print("done with " + str(num) + " batches")
         error_list.append(err)
         l2_error_list.append(l2_err)
@@ -1561,23 +1621,39 @@ def train_on_random_board_results(f_name):
   l2_error_list = []
   num = 0
   for inputs, outputs in random_board_results_input_output_iterator():
-    l2_err, who_cares_1, err, who_cares_2 = convbot.sess.run([l2_error_total_value, train_step_l2_reg_value, mean_square_value, train_step_value], feed_dict={
+    # print('ONE input:' )
+    # print(inputs[4])
+    # print('outputs: ')
+    # print(outputs)
+    # l2_err, who_cares_1, err, who_cares_2 = convbot.sess.run([l2_error_total_value, train_step_l2_reg_value, mean_square_value, train_step_value], feed_dict={
+    #   x_value : inputs,
+    #   target_value : outputs
+    # })
+    err, who_cares_2, results = convbot.sess.run([mean_square_value, train_step_value, output_value], feed_dict={
       x_value : inputs,
       target_value : outputs
     })
+    if num % 100 == 0:
+      print('target: ')
+      print(outputs)
+      print("results:")
+      print(results)
     
+
     
     num += 1
-    if num % 20 == 0:
-      # print(l2_err)
+    if num % 1 == 0:
+      l2_err, who_cares = convbot.sess.run([l2_error_total_value, train_step_l2_reg_value], feed_dict={
+        x_value : inputs
+      })
       error_list.append(err)
       print(error_list)
       same_fname, new_largest = convbot.save_in_next_slot()
       set_largest_batch_in_folder(same_fname, new_largest)
-      convbot.sess.close()
+      # convbot.sess.close()
       largest = new_largest
       print("one that just printed is " + str(largest - 1))
-      convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
+      # convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
     if len(error_list) > 200:
       print('shortening error lists')
       error_list = error_list[0::2]
@@ -1646,6 +1722,10 @@ def test_move_accuracy(f_name, batch=None):
 
 
 if __name__ == '__main__':
+  # b1 = [[1,0,-1,0,1],[1,0,-1,0,1],[1,0,-1,0,1],[1,0,-1,0,1],[1,0,-1,0,1]]
+  # print(split_board(np.asarray(b1),1))
+
+
   # continuously_train()
 
 
