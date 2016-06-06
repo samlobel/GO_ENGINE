@@ -50,6 +50,8 @@ NUM_POLICY_GAMES_TO_SIMULATE_PER_BOARD = 5
 
 REGULARIZER_CONSTANT = 0.0001
 
+REGULARIZER_CONSTANT_VALUE = 0.0005
+
 
 """
 Let's make a list of features that will make this the most
@@ -259,7 +261,7 @@ train_step_learnmoves_policy = MomentumOptimizer_learnmoves_policy.minimize(mean
 
 
 GradientOptimizer_l2_policy = tf.train.GradientDescentOptimizer(0.0005, name=prefixize('l2_optimizer_policy'))
-train_step_l2_reg_policy = GradientOptimizer_l2_policy.minimize(l2_error_total)
+train_step_l2_reg_policy = GradientOptimizer_l2_policy.minimize(l2_error_total_policy)
 
 
 
@@ -309,11 +311,11 @@ h_conv3_value = tf.nn.elu(conv2d(h_conv2_value, W_conv3_value, padding="SAME") +
 
 W_conv4_value = weight_variable([3,3,20,1], suffix="W_conv4_value")
 b_conv4_value = bias_variable([BOARD_SIZE,BOARD_SIZE,1], suffix="b_conv4_value")
-h_conv4_value = tf.nn.elu(conv2d(h_conv3_value, W_conv4_value, padding="SAME" + b_conv4_value, name=prefixize('h_conv4_value')))
+h_conv4_value = tf.nn.elu(conv2d(h_conv3_value, W_conv4_value, padding="SAME") + b_conv4_value, name=prefixize('h_conv4_value'))
 
 # Reshape into a flattened board. That's so small! I want another layer, but I'm not
 # sure I can handle it or need it. For now, NO THANKS.
-h_conv4_flattened_value = tf.reshape([-1, BOARD_SIZE*BOARD_SIZE])
+h_conv4_flattened_value = tf.reshape(h_conv4_value, [-1, BOARD_SIZE*BOARD_SIZE])
 W_fc1_value = weight_variable([25,1], suffix="W_fc1_value")
 b_fc1_value = bias_variable([1], suffix="b_fc1_value")
 output_value = tf.tanh(tf.matmul(h_conv4_flattened_value, W_fc1_value) + b_fc1_value)
@@ -332,7 +334,7 @@ l2_loss_layer_3_value = tf.nn.l2_loss(W_conv3_value, name=prefixize('l2_layer3_v
 l2_loss_layer_4_value = tf.nn.l2_loss(W_conv4_value, name=prefixize('l2_layer4_value'))
 l2_loss_layer_5_value = tf.nn.l2_loss(W_fc1_value, name=prefixize('l2_layer5_value'))
 
-l2_error_total_value = REGULARIZER_CONSTANT * (l2_loss_layer_1_value + l2_loss_layer_2_value + 
+l2_error_total_value = REGULARIZER_CONSTANT_VALUE * (l2_loss_layer_1_value + l2_loss_layer_2_value + 
                     l2_loss_layer_3_value + l2_loss_layer_4_value + l2_loss_layer_5_value)
 
 
@@ -1072,21 +1074,13 @@ def board_to_input_transform_policy(board_matrix, all_previous_boards, current_t
 def board_to_input_transform_value(board_matrix, all_previous_boards, current_turn):
   """
   Same thing as above, right? Should I have one that says which color you are,
-  actually? Yes, because of the handicap thing.
+  actually? Yes, because of the handicap thing. How should that work?
+  It should maybe be a layer of all -1 or all 1, depending on whether you're
+  white or black. BUT, I think it would be fine if you didn't have it, for now.
 
-  I should get this ready for features, but I really don't want to.
-  Remember, this is assuming that it's white's turn? No. For policy,
-  it's black's turn. For value, it's white's turn. I think that means 
-  I should have two of these functions.
-  How can I still not be sure if I have a *-1 error somewhere? That's
-  ridiculous.
+  Literally the EXACT same thing. But I'll leave it different for now, because I want
+  the option of changing it without changing the API.
 
-  ASSUMES THIS PLAYER IS BLACK. IMPORTANT FOR LEGAL_MOVE MAP.
-
-  NOPE, IT DOESN'T. BUT IT TRANSFORMS IT SO THAT THE OUTPUT THINKS IT IS.
-
-  Why in the world is this a class method when it doesn't use anything from the
-  class? I'm going to make it not-class.
 
   """
 
@@ -1184,8 +1178,8 @@ def play_game(load_data_1, load_data_2):
   # load_path_1 = make_path_from_folder_and_batch_num(folder_1, batch_num_1)
   # load_path_2 = make_path_from_folder_and_batch_num(folder_2, batch_num_2)
 
-  convbot_one = Convbot_FIVE_SPLIT_FEATURES(folder_name=folder_1, batch_num=batch_num_1)
-  convbot_two = Convbot_FIVE_SPLIT_FEATURES(folder_name=folder_2, batch_num=batch_num_2)
+  convbot_one = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=folder_1, batch_num=batch_num_1)
+  convbot_two = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=folder_2, batch_num=batch_num_2)
 
   "assign randomly who is who"
   p1 = (int(random.random() > 0.5) * 2) - 1 #That should generate 0/1, transform to 0/2, shift to -1,1
@@ -1249,8 +1243,11 @@ def play_game(load_data_1, load_data_2):
 
 
 def create_random_starters_for_folder(folder_name):
+  if largest_batch_file_exists(folder_name):
+    print('already exists')
+    return
   print("creating random starter in folder: " + str(folder_name))
-  new_cb = Convbot_FIVE_SPLIT_FEATURES(folder_name=folder_name, batch_num=0)
+  new_cb = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=folder_name, batch_num=0)
   new_cb.save_in_next_slot()
   print("random starter created and saved")
   set_largest_batch_in_folder(folder_name, 1)
@@ -1289,6 +1286,11 @@ def set_largest_batch_in_folder(f_name, batch_num):
   f = open(filename, 'w')
   f.write(str(batch_num))
   f.close()
+
+def largest_batch_file_exists(f_name):
+  folder = os.path.join(this_dir, 'saved_models', 'convnet_pol_val_good')
+  filename = os.path.join(folder, f_name,'largest.txt')
+  return os.path.isfile(filename)
 
 
 
@@ -1336,7 +1338,7 @@ def random_board_iterator():
 
 
 def random_board_results_iterator():
-  with open('./random_boards.txt') as f:
+  with open('./random_board_results.txt') as f:
     while True:
       to_yield = [f.readline() for i in xrange(100)]
       if to_yield[-1] == '':
@@ -1349,15 +1351,36 @@ def random_board_results_iterator():
 
 
 def random_board_results_input_output_iterator():
+  """
+  I need to do the value for BOTH turns, and pass in those inputs.
+  So, I can just do a for loop to make them. Should I do one? Or both?
+  I think maybe just one, because maybe always seeing both will give it
+  some crazy fake symmetries.
+  """
+  turn_map = {
+    1 : 'black_to_go_average_value',
+    -1 : 'white_to_go_average_value'
+  }
   for results_obj in random_board_results_iterator():
-    to_yield = []
+    to_yield_input = []
+    to_yield_output = []
     for result in results_obj:
+      # print(result)
       board = result['board']
-      # input_black = 
       board_matrix = np.asarray(board, dtype=np.float32)
-      # input_black = board_to
-      # target_black_next
-    continue
+      turn = random.choice([-1,1])
+      inputs = board_to_input_transform_value(board_matrix, [], turn)
+      output = [result[turn_map[turn]]]
+      to_yield_input.append(inputs)
+      to_yield_output.append(output)
+    yield np.asarray(to_yield_input, dtype=np.float32), \
+              np.asarray(to_yield_output, dtype=np.float32)
+
+  print('all done')
+
+
+
+      
 
 
 
@@ -1423,7 +1446,7 @@ def get_output_goals_for_boards(boards):
 
 # def train_on_all_random_boards(f_name):
 #   largest = get_largest_batch_in_folder(f_name)
-#   convbot = Convbot_FIVE_SPLIT_FEATURES(folder_name=f_name, batch_num=largest)
+#   convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
 #   error_list = []
 #   l2_error_list = []
 #   for board_list in random_board_iterator():
@@ -1450,7 +1473,7 @@ def get_output_goals_for_boards(boards):
 #       set_largest_batch_in_folder(same_fname, new_largest)
 #       convbot.sess.close()
 #       largest = new_largest
-#       convbot = Convbot_FIVE_SPLIT_FEATURES(folder_name=f_name, batch_num=largest)
+#       convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
 
   
 #   print(error_list)
@@ -1466,7 +1489,7 @@ def train_on_each_batch_lots(f_name):
   What I COULD do if I wanna be fancy is prioritized experience replay.
   """
   largest = get_largest_batch_in_folder(f_name)
-  convbot = Convbot_FIVE_SPLIT_FEATURES(folder_name=f_name, batch_num=largest)
+  convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
   error_list = []
   l2_error_list = []
   num = 0
@@ -1521,7 +1544,7 @@ def train_on_each_batch_lots(f_name):
         convbot.sess.close()
         largest = new_largest
         print("one that just printed is " + str(largest - 1))
-        convbot = Convbot_FIVE_SPLIT_FEATURES(folder_name=f_name, batch_num=largest)
+        convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
       if len(error_list) > 200:
         print('shortening error lists')
         error_list = error_list[0::2]
@@ -1533,62 +1556,36 @@ def train_on_each_batch_lots(f_name):
 
 def train_on_random_board_results(f_name):
   largest = get_largest_batch_in_folder(f_name)
-  convbot = Convbot_FIVE_SPLIT_FEATURES(folder_name=f_name, batch_num=largest)
+  convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
   error_list = []
   l2_error_list = []
   num = 0
-  for result_obj_list in random_board_iterator():
+  for inputs, outputs in random_board_results_input_output_iterator():
+    l2_err, who_cares_1, err, who_cares_2 = convbot.sess.run([l2_error_total_value, train_step_l2_reg_value, mean_square_value, train_step_value], feed_dict={
+      x_value : inputs,
+      target_value : outputs
+    })
+    
+    
+    num += 1
+    if num % 2 == 0:
+      print(l2_err)
+      error_list.append(err)
+      print(error_list)
+      same_fname, new_largest = convbot.save_in_next_slot()
+      set_largest_batch_in_folder(same_fname, new_largest)
+      convbot.sess.close()
+      largest = new_largest
+      print("one that just printed is " + str(largest - 1))
+      convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
 
-    inputs = get_inputs_from_boards(board_list)
-    outputs = get_output_goals_for_boards(board_list)
-    if len(inputs) != len(outputs):
-      raise Exception("lengths should be the same!")
-    new_inputs = []
-    new_outputs = []
-    for ins, outs in zip(inputs, outputs):
-      if np.array_equal(outs, np.zeros(outs.shape)):
-        print('caught a zero matrix! Aha!')
-        continue
-      new_inputs.append(ins)
-      new_outputs.append(outs)
-    inputs = np.asarray(new_inputs, dtype=np.float32)
-    outputs = np.asarray(new_outputs, dtype=np.float32)
 
-    for i in range(50):
-      num += 1
-      # print("starting training calculation")
-      err, who_cares = convbot.sess.run([mean_square_policy, train_step_winning_policy], feed_dict={
-        x_policy : inputs,
-        softmax_output_goal_policy : outputs
-      })
-
-      l2_err, who_cares = convbot.sess.run([l2_error_total, train_step_l2_reg_policy], feed_dict={
-
-      })
-      if num % 10 == 0:
-        print("done with " + str(num) + " batches")
-        error_list.append(err)
-        l2_error_list.append(l2_err)
-        print('error:')
-        print(error_list)
-        same_fname, new_largest = convbot.save_in_next_slot()
-        set_largest_batch_in_folder(same_fname, new_largest)
-        convbot.sess.close()
-        largest = new_largest
-        print("one that just printed is " + str(largest - 1))
-        convbot = Convbot_FIVE_SPLIT_FEATURES(folder_name=f_name, batch_num=largest)
-      if len(error_list) > 200:
-        print('shortening error lists')
-        error_list = error_list[0::2]
-        l2_error_list = l2_error_list[0::2]
-
-  print(error_list)
 
 def test_move_accuracy(f_name, batch=None):
   if batch is None:
     batch = get_largest_batch_in_folder(f_name)
   # largest = get_largest_batch_in_folder(f_name)
-  convbot = Convbot_FIVE_SPLIT_FEATURES(folder_name=f_name, batch_num=batch)
+  convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=batch)
 
   for board_list in random_board_iterator():
     inputs = get_inputs_from_boards(board_list)
@@ -1645,7 +1642,7 @@ def test_move_accuracy(f_name, batch=None):
 
 
 if __name__ == '__main__':
-  continuously_train()
+  # continuously_train()
 
 
   # folder_name = "test_lotsonone"
@@ -1673,6 +1670,9 @@ if __name__ == '__main__':
 
   # create_random_starters_for_folder("test")
   # create_random_starters_for_folders(['1','2','3'])
+  create_random_starters_for_folders(['test'])
+  # while True:
+  train_on_random_board_results('test')
   # train_on_all_random_boards("test")
 
   # train_on_each_batch_lots("test")
