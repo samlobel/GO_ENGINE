@@ -1568,8 +1568,8 @@ def train_on_random_board_results(f_name):
     
     
     num += 1
-    if num % 2 == 0:
-      print(l2_err)
+    if num % 20 == 0:
+      # print(l2_err)
       error_list.append(err)
       print(error_list)
       same_fname, new_largest = convbot.save_in_next_slot()
@@ -1578,6 +1578,10 @@ def train_on_random_board_results(f_name):
       largest = new_largest
       print("one that just printed is " + str(largest - 1))
       convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
+    if len(error_list) > 200:
+      print('shortening error lists')
+      error_list = error_list[0::2]
+      l2_error_list = l2_error_list[0::2]
 
 
 
