@@ -1676,7 +1676,8 @@ if __name__ == '__main__':
   # create_random_starters_for_folders(['1','2','3'])
   create_random_starters_for_folders(['test'])
   # while True:
-  train_on_random_board_results('test')
+  for i in range(20):
+    train_on_random_board_results('test')
   # train_on_all_random_boards("test")
 
   # train_on_each_batch_lots("test")
