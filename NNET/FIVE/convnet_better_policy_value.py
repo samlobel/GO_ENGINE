@@ -1398,7 +1398,7 @@ def random_board_iterator():
 def random_board_results_iterator():
   with open('./random_board_results.txt') as f:
     while True:
-      to_yield = [f.readline() for i in xrange(200)]
+      to_yield = [f.readline() for i in xrange(5)]
       if to_yield[-1] == '':
         print('done with iteration, hit end of file.')
         # print(to_yield)
@@ -1642,7 +1642,7 @@ def train_on_random_board_results(f_name):
 
     
     num += 1
-    if num % 1 == 0:
+    if num % 10 == 0:
       l2_err, who_cares = convbot.sess.run([l2_error_total_value, train_step_l2_reg_value], feed_dict={
         x_value : inputs
       })
@@ -1652,6 +1652,7 @@ def train_on_random_board_results(f_name):
       set_largest_batch_in_folder(same_fname, new_largest)
       # convbot.sess.close()
       largest = new_largest
+      convbot.batch_num = new_largest
       print("one that just printed is " + str(largest - 1))
       # convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
     if len(error_list) > 200:
