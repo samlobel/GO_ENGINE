@@ -1340,7 +1340,7 @@ def random_board_iterator():
 def random_board_results_iterator():
   with open('./random_board_results.txt') as f:
     while True:
-      to_yield = [f.readline() for i in xrange(100)]
+      to_yield = [f.readline() for i in xrange(200)]
       if to_yield[-1] == '':
         print('done with iteration, hit end of file.')
         # print(to_yield)
