@@ -55,9 +55,9 @@ def return_value_object(convbot):
     current_board = new_board
     current_turn *= -1
   print("Game lasted for " + str(len(move_list)) + " turns.")
-  if len(move_list) > 50:
-    print('long game. why?')
-    print(move_list)
+  # if len(move_list) > 50:
+  #   print('long game. why?')
+  #   print(move_list)
   winner = util.determine_winner(current_board)
   length_of_game = len(all_previous_boards)
   random_index = random.randint(0, length_of_game - 1)
@@ -103,6 +103,7 @@ def test():
 def worker_transform(r_queue, num=100000):
   convbot, _ = get_largest_convbot_from_folder(FOLDER_NAME)
   for i in xrange(num):
+    print i
     try:
       value_obj = return_value_object(convbot)
       if value_obj is None:
@@ -136,7 +137,7 @@ def worker_writer(r_queue):
 
 def kick_off(num=200000):
   print 'starting'
-  RESULT_QUEUE = Queue(maxsize=1000)  
+  RESULT_QUEUE = Queue(maxsize=1000)
   NUM_WORKERS = None
   try:
     NUM_WORKERS = int(sys.argv[1])
@@ -144,6 +145,7 @@ def kick_off(num=200000):
     NUM_WORKERS=4
   print 'num workers: ' + str(NUM_WORKERS)
   num_per = num // NUM_WORKERS
+  print 'num_workers: ' + str(NUM_WORKERS) + ". num_per: " + str(num_per) + " num: " + str(num)
   proc_out = Process(target=worker_writer, args=[RESULT_QUEUE])
   proc_out.start()
   for i in range(NUM_WORKERS):
@@ -157,7 +159,7 @@ def kick_off(num=200000):
 
 if __name__ == '__main__':
   # test()
-  kick_off(100)
+  kick_off()
 
 
 
