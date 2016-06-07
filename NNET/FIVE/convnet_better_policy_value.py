@@ -1337,6 +1337,33 @@ def random_board_results_iterator():
       yield to_yield
   print("exit iterator")
 
+def on_policy_input_value_iterator():
+  BATCH_SIZE = 200  
+  with open('./on_policy_results.txt') as f:
+    while True:
+      inputs = []
+      values = []
+      broken = False
+      for i in xrange(BATCH_SIZE):
+        line = f.readline()
+        if line == '':
+          print('done with iteration, hit end of file for random_board_input_out')
+          broken = True
+          break
+        line_obj = json.loads(line.strip())
+        inputs.append(line_obj['board_input_serialized'])
+        values.append([line_obj['value_goal']])
+      if broken == True:
+        break
+      inputs_np = np.asarray(inputs, dtype=np.float32)
+      values_np = np.asarray(values, dtype=np.float32)
+      yield inputs_np, values_np
+  print('exit on_policy_input_value_iterator')
+
+
+
+
+
 
 def random_board_input_softmax_output_iterator():
   BATCH_SIZE = 200
@@ -1360,6 +1387,8 @@ def random_board_input_softmax_output_iterator():
       outputs_np = np.asarray(outputs, dtype=np.float32)
       yield inputs_np, outputs_np
   print('exit iterator.')
+
+
 
 
 
@@ -1603,6 +1632,47 @@ def train_on_random_board_results(f_name):
       error_list = error_list[0::2]
       l2_error_list = l2_error_list[0::2]
 
+
+def train_from_on_policy_board_results(f_name):
+  largest = get_largest_batch_in_folder(f_name)
+  convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
+  error_list = []
+  l2_error_list = []
+  num = 0
+  for inputs, outputs in on_policy_input_value_iterator():
+    # print('ONE input:' )
+    # print(inputs[4])
+    # print('outputs: ')
+    # print(outputs)
+    err, who_cares_2, results = convbot.sess.run([mean_square_value, train_step_value, output_value], feed_dict={
+      x_value : inputs,
+      target_value : outputs
+    })
+    if num % 100 == 0:
+      print('target: ')
+      print(outputs[13])
+      print("results:")
+      print(results[13])
+    
+    num += 1
+    if num % 10 == 0:
+      l2_err, who_cares = convbot.sess.run([l2_error_total_value, train_step_l2_reg_value], feed_dict={
+        x_value : inputs
+      })
+      error_list.append(err)
+      print(error_list)
+      same_fname, new_largest = convbot.save_in_next_slot()
+      set_largest_batch_in_folder(same_fname, new_largest)
+      # convbot.sess.close()
+      largest = new_largest
+      convbot.batch_num = new_largest
+      print("one that just printed is " + str(largest - 1))
+      # convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
+    if len(error_list) > 200:
+      print('shortening error lists')
+      error_list = error_list[0::2]
+      l2_error_list = l2_error_list[0::2]
+
 def train_policy_from_value_on_random_boards(f_name):
   largest = get_largest_batch_in_folder(f_name)
   convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
@@ -1766,8 +1836,12 @@ if __name__ == '__main__':
 
   # create_random_starters_for_folder("test")
   # create_random_starters_for_folders(['1','2','3'])
+  # for i in xrange(50):
+  #   train_policy_from_value_on_random_boards('test')
+  #   print("Finished with training epoch: " + str(i))
+
   for i in xrange(50):
-    train_policy_from_value_on_random_boards('test')
+    train_from_on_policy_board_results('test')
     print("Finished with training epoch: " + str(i))
 
   
