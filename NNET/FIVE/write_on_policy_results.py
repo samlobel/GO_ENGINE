@@ -103,7 +103,6 @@ def test():
 def worker_transform(r_queue, num=100000):
   convbot, _ = get_largest_convbot_from_folder(FOLDER_NAME)
   for i in xrange(num):
-    print i
     try:
       value_obj = return_value_object(convbot)
       if value_obj is None:
