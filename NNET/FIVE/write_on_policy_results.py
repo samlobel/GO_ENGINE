@@ -41,7 +41,7 @@ def return_value_object(convbot):
   current_board = np.zeros(BOARD_SHAPE, dtype=np.float32)
   while True:
     if (len(move_list) >= 2) and (move_list[-1] is None) and (move_list[-2] is None):
-      print('over')
+      # print('over')
       break
     # print('going')
     # print(move_list)
@@ -54,7 +54,7 @@ def return_value_object(convbot):
 
     current_board = new_board
     current_turn *= -1
-  print("Game lasted for " + str(len(move_list)) + " turns.")
+  # print("Game lasted for " + str(len(move_list)) + " turns.")
   # if len(move_list) > 50:
   #   print('long game. why?')
   #   print(move_list)
