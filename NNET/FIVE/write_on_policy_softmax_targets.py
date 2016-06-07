@@ -46,6 +46,9 @@ def board_to_result_obj(convbot, board, current_turn=1, temp=0.5):
   board_np = np.asarray(board, dtype=np.float32)
   board_input = board_to_input_transform_value(board_np, [], current_turn)
   softmax_for_board = convbot.create_softmax_from_value_function(board_np, [], current_turn, temperature=temp)
+  if softmax_for_board is None:
+    print 'should return none, deal with it.'
+    return None
   softmax_array = softmax_for_board.tolist()
   board_input_array = board_input.tolist()
 
@@ -84,7 +87,10 @@ def worker_transform(b_queue, r_queue):
       board_obj = b_queue.get(block=True, timeout=10)
       current_turn = random.choice([-1,1])
       result_obj = board_to_result_obj(convbot, board_obj, current_turn=current_turn)
-      r_queue.put(result_obj)
+      if result_obj is None:
+        continue
+      else:
+        r_queue.put(result_obj)
     except Exception:
       print 'exception in writer!'
       break
@@ -124,8 +130,8 @@ def worker_writer(r_queue):
 
 def kick_off():
   print 'starting'
-  BOARD_QUEUE = Queue(maxsize=100)
-  BOARD_RESULT_QUEUE = Queue(maxsize=100)
+  BOARD_QUEUE = Queue(maxsize=1000)
+  BOARD_RESULT_QUEUE = Queue(maxsize=1000)
   NUM_WORKERS = None
   try:
     NUM_WORKERS = int(sys.argv[1])
