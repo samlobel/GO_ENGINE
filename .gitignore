@@ -7,3 +7,4 @@ nohup.out
 *.out
 random_boards.txt
 random_board_results.txt
+random_board_softmax_output.txt
