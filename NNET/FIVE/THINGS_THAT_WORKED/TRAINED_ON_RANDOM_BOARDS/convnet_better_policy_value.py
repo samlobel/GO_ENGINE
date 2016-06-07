@@ -255,26 +255,6 @@ train_step_winning_policy = AdamOptimizer_policy.minimize(mean_square_policy)
 
 train_step_losing_policy = AdamOptimizer_policy.minimize(negative_mean_square_policy)
 
-
-
-
-
-
-# MomentumOptimizer_policy = tf.train.MomentumOptimizer(0.01, 0.1, name=prefixize('momentum_policy'))
-# train_step_momentum_policy = MomentumOptimizer_policy.minimize(mean_square_policy)
-
-
-
-
-
-
-
-
-
-
-
-
-
 # MomentumOptimizer_forlosing_policy = tf.train.MomentumOptimizer(0.01, 0.1, name=prefixize('momentum_policy'))
 
 MomentumOptimizer_learnmoves_policy = tf.train.MomentumOptimizer(0.001, 0.1, name=prefixize('momentum_learnmoves_policy'))
@@ -558,31 +538,21 @@ class Convbot_FIVE_POLICY_VALUE_NEWEST(GoBot):
     #     inputs = board_to_input_transform_value
 
   def create_softmax_from_value_function(self, board_matrix, all_previous_boards, current_turn, temperature=1.0):
-    """
-    I guess it doesn't realy matter whether I input turn or negative turn, but
-    I should be asking about who GOES NEXT. So, it should be negative turn.
-
-    As long as I keep this definition sound, I should be fine. It's saying:
-    If white is to go, value is saying the chance of black winning from this 
-    position. So, if white is to go, I want to pass in black.
-    """
     target = np.zeros(board_matrix.shape, dtype=np.float32)
-    target.fill(-20.0) #Illegal moves should be ZERO! But I don't want to break it by being super negative.
+    target.fill(-8.0) #Illegal moves should be ZERO! But I don't want to break it by being super negative.
     legal_sensible_moves = util.output_all_valid_sensible_moves(board_matrix, all_previous_boards, current_turn)
-    if len(legal_sensible_moves) == 0:
+    if len(valid_sensible_moves) == 0:
       print('this means there are no valid moves left, returning None')
       return None
-    inputs_boards = [util.update_board_from_move(board_matrix, move, current_turn) for move in legal_sensible_moves]
-    inputs = np.asarray([board_to_input_transform_value(board, all_previous_boards, current_turn * -1) for board in inputs_boards], dtype=np.float32)
+    inputs_boards = [util.update_board_from_move(board_matrix, move, current_turn) for move in valid_sensible_moves]
+    inputs = np.asarray([board_to_input_transform_value(board, new_previous_list, current_turn * -1) for board in inputs_boards], dtype=np.float32)
     outputs = self.sess.run(output_value, feed_dict={
       x_value : inputs
     })
     zipped = zip(legal_sensible_moves, outputs)
     for (i,j), value in zipped:
       target[i][j] = value
-    # print(target)
     target_softmax = softmax_np(target, temperature)
-    # print(target_softmax)
     return target_softmax
 
 
@@ -1338,72 +1308,35 @@ def random_board_results_iterator():
   print("exit iterator")
 
 
-def random_board_input_output_iterator():
-  with open('./random_board_softmax_output.txt') as f:
-    while True:
-      pass
+def random_board_results_input_output_iterator():
+  """
+  I need to do the value for BOTH turns, and pass in those inputs.
+  So, I can just do a for loop to make them. Should I do one? Or both?
+  I think maybe just one, because maybe always seeing both will give it
+  some crazy fake symmetries.
+  """
+  turn_map = {
+    1 : 'black_to_go_average_value',
+    -1 : 'white_to_go_average_value'
+  }
+  for results_obj in random_board_results_iterator():
+    to_yield_input = []
+    to_yield_output = []
+    for result in results_obj:
+      # print(result)
+      board = result['board']
+      board_matrix = np.asarray(board, dtype=np.float32)
+      # print(board)
+      turn = random.choice([-1,1])
+      inputs = board_to_input_transform_value(board_matrix, [], turn)
+      # print(inputs)
+      output = [result[turn_map[turn]]]
+      to_yield_input.append(inputs)
+      to_yield_output.append(output)
+    yield np.asarray(to_yield_input, dtype=np.float32), \
+              np.asarray(to_yield_output, dtype=np.float32)
 
-  pass
-
-
-# def random_board_results_input_output_iterator():
-#   """
-# 
-#                           OLD
-# 
-# 
-#   I need to do the value for BOTH turns, and pass in those inputs.
-#   So, I can just do a for loop to make them. Should I do one? Or both?
-#   I think maybe just one, because maybe always seeing both will give it
-#   some crazy fake symmetries.
-#   """
-#   turn_map = {
-#     1 : 'black_to_go_average_value',
-#     -1 : 'white_to_go_average_value'
-#   }
-#   for results_obj in random_board_results_iterator():
-#     to_yield_input = []
-#     to_yield_output = []
-#     for result in results_obj:
-#       # print(result)
-#       board = result['board']
-#       board_matrix = np.asarray(board, dtype=np.float32)
-#       # print(board)
-#       turn = random.choice([-1,1])
-#       inputs = board_to_input_transform_value(board_matrix, [], turn)
-#       # print(inputs)
-#       output = [result[turn_map[turn]]]
-#       to_yield_input.append(inputs)
-#       to_yield_output.append(output)
-#     yield np.asarray(to_yield_input, dtype=np.float32), \
-#               np.asarray(to_yield_output, dtype=np.float32)
-
-#   print('all done')
-
-# def policy_input_output_from_random_board_iterator(convbot, temp=1.0):
-
-#   for board_list in random_board_iterator():
-#     to_yield_input = []
-#     to_yield_output = []
-#     for board in board_list:
-#       board_np = np.asarray(board, dtype=np.float32)
-#       current_turn = random.choice([-1,1])
-#       all_previous_boards = []
-#       policy_input = board_to_input_transform_policy(board_np, all_previous_boards, current_turn)
-#       softmax_output = convbot.create_softmax_from_value_function(board_np, all_previous_boards, current_turn, temperature=temp)
-#       if softmax_output is None:
-#         continue
-#       to_yield_input.append(policy_input)
-#       to_yield_output.append(softmax_output)
-#       # to_yield.append( (board_np, current_turn, softmax_output) )
-#       # Hmmm. Should I be writing this as a file? Then I can do it multiple times.
-#       # How about I start out not doing that, and do it if speed is a concern. Although this
-#       # is gonna be slow as hell, really. Anyway, we'll see.
-#     to_yield_input = np.asarray(to_yield_input, dtype=np.float32)
-#     to_yield_output = np.asarray(to_yield_output, dtype=np.float32)
-#     yield to_yield_input, to_yield_output
-
-#   print('iterator done.')
+  print('all done')
 
 
 
@@ -1469,6 +1402,42 @@ def get_output_goals_for_boards(boards):
     to_return.append(normalized_black_goal)
     to_return.append(normalized_white_goal)
   return np.asarray(to_return, dtype=np.float32)
+
+
+# def train_on_all_random_boards(f_name):
+#   largest = get_largest_batch_in_folder(f_name)
+#   convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
+#   error_list = []
+#   l2_error_list = []
+#   for board_list in random_board_iterator():
+#     inputs = get_inputs_from_boards(board_list)
+#     outputs = get_output_goals_for_boards(board_list)
+#     # training_mask = np.ones_like(outputs)
+#     # The training mask is unneccesarry here, but what it does is say, everything
+#     # is in play.
+#     print("starting training calculation")
+#     l2_err, tot_err, who_cares = convbot.sess.run([l2_error_total, total_error, train_step_winning_policy], feed_dict={
+#       x_policy : inputs,
+#       softmax_output_goal_policy : outputs
+#     })
+#     print("ending training calculation")
+#     error_list.append(tot_err)
+#     l2_error_list.append(l2_err)
+#     print("done with " + str(len(error_list)) + " batches")
+#     # print(error_list)
+#     # print(l2_error_list)
+#     if len(error_list) % 10 == 0:
+#       print('error:')
+#       print(error_list)
+#       same_fname, new_largest = convbot.save_in_next_slot()
+#       set_largest_batch_in_folder(same_fname, new_largest)
+#       convbot.sess.close()
+#       largest = new_largest
+#       convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
+
+  
+#   print(error_list)
+#   print(l2_error_list)
 
 
 def train_on_each_batch_lots(f_name):
@@ -1556,6 +1525,10 @@ def train_on_random_board_results(f_name):
     # print(inputs[4])
     # print('outputs: ')
     # print(outputs)
+    # l2_err, who_cares_1, err, who_cares_2 = convbot.sess.run([l2_error_total_value, train_step_l2_reg_value, mean_square_value, train_step_value], feed_dict={
+    #   x_value : inputs,
+    #   target_value : outputs
+    # })
     err, who_cares_2, results = convbot.sess.run([mean_square_value, train_step_value, output_value], feed_dict={
       x_value : inputs,
       target_value : outputs
@@ -1565,6 +1538,8 @@ def train_on_random_board_results(f_name):
       print(outputs)
       print("results:")
       print(results)
+    
+
     
     num += 1
     if num % 10 == 0:
@@ -1584,45 +1559,6 @@ def train_on_random_board_results(f_name):
       print('shortening error lists')
       error_list = error_list[0::2]
       l2_error_list = l2_error_list[0::2]
-
-def train_policy_from_value_on_random_boards(f_name):
-  largest = get_largest_batch_in_folder(f_name)
-  convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
-  error_list = []
-  l2_error_list = []
-  num = 0
-
-  for inputs, outputs in policy_input_output_from_random_board_iterator(convbot, temp=0.66):
-    err, who_cares, result_policy = convbot.sess.run([mean_square_policy, train_step_winning_policy, softmax_output_policy], feed_dict={
-      x_policy : inputs,
-      softmax_output_goal_policy : outputs
-    });
-    if num % 10 == 0:
-      print('target: ')
-      print(outputs[13])
-      print('results: ')
-      print(result_policy[13])
-    num += 1
-    print(num)
-    if num % 10 == 0:
-      l2_err, who_cares = convbot.sess.run([l2_error_total_policy, train_step_l2_reg_policy], feed_dict={
-        x_policy : inputs
-      })
-      error_list.append(err)
-      print(error_list)
-      same_fname, new_largest = convbot.save_in_next_slot()
-      set_largest_batch_in_folder(same_fname, new_largest)
-      # convbot.sess.close()
-      largest = new_largest
-      convbot.batch_num = new_largest
-      print("one that just printed is " + str(largest - 1))
-    if len(error_list) > 200:
-      print('shortening error lists')
-      error_list = error_list[0::2]
-      l2_error_list = l2_error_list[0::2]
-  print('done')
-  return
-
 
 
 
@@ -1656,33 +1592,11 @@ def test_move_accuracy(f_name, batch=None):
     print(outputs_zipped)
 
 
-def output_board_from_on_policy_game(convbot, num_moves):
-  pass
-  """
-  This is an interesting one. I can do it a few different ways.
-  First, I can play a game, find out the result, and then pick a random
-  board from its history, with the proper person's turn, and the score, and
-  have that be the output object.
-
-  The only problem with that is that you only play one game, so you don't 
-  get the best results. BUT, if you have lots of inputs, it shouldn't really
-  matter, right? Everything should just even out. But I don't want to pass in bad
-  data. The other option is, play a game, find a board, and play from that board
-  like 5 times, and then average. That's better because of the value, but its worse
-  because you sort of waste one game just generating.
-
-  So, how about I do the same thing as before, with writing boards to a file somewhere
-  as an interim step.
-  """
 
 
 
 
 
-def get_largest_convbot_from_folder(f_name):
-  largest = get_largest_batch_in_folder(f_name)
-  convbot = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=f_name, batch_num=largest)
-  return convbot, largest
 
 
 
@@ -1748,18 +1662,10 @@ if __name__ == '__main__':
 
   # create_random_starters_for_folder("test")
   # create_random_starters_for_folders(['1','2','3'])
-
-  train_policy_from_value_on_random_boards('test')
-
-  
-
-  # create_random_starters_for_folders(['test'])
-  # # while True:
-  # for i in range(20):
-  #   train_on_random_board_results('test')
-  
-
-
+  create_random_starters_for_folders(['test'])
+  # while True:
+  for i in range(20):
+    train_on_random_board_results('test')
   # train_on_all_random_boards("test")
 
   # train_on_each_batch_lots("test")

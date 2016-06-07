@@ -307,3 +307,6 @@ I spent a LOT of time on this, but it was stupid, considering that computation i
 
 
 I just did something GREAT. I made a parallelizable thing.
+
+Another interesting thing is that I want to focus on games that I lose, because that's
+sort of the way to get better. Thoughts for another time.
