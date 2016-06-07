@@ -8,3 +8,4 @@ nohup.out
 random_boards.txt
 random_board_results.txt
 random_board_softmax_output.txt
+on_policy_results.txt
