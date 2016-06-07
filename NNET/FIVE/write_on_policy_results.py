@@ -134,7 +134,7 @@ def worker_writer(r_queue):
         break
 
 
-def kick_off(num=100000):
+def kick_off(num=200000):
   print 'starting'
   RESULT_QUEUE = Queue(maxsize=1000)  
   NUM_WORKERS = None
