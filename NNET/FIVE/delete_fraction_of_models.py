@@ -1,5 +1,6 @@
 import os
 this_dir = os.path.dirname(os.path.realpath(__file__))
+import sys
 
 
 def make_path_from_folder_and_batch_num(folder_name, batch_num):
@@ -56,7 +57,6 @@ def delete_from_folder(folder_name, denominator, MAX):
 
 
 
-    
 
 
 
@@ -66,11 +66,15 @@ def delete_from_folder(folder_name, denominator, MAX):
 
 if __name__ == '__main__':
   print "main. deleting 3 out of 4 models."
+  f_name = 'test'
+  if len(sys.argv) > 1:
+    print 'captured sys argv as ' + str(sys.argv[1])
+    f_name = sys.argv[1]
   # for folder in ['1','2','3','4','5']:
     # print "deleting from folder " + str(folder)
     # delete_from_folder(folder, 2, 5000)
     # delete_from_folder(folder, 2, 5000)
-  delete_from_folder('test', 2, 5000)
+  delete_from_folder(f_name, 2, 5000)
   print "after"
   # print make_path_from_folder_and_batch_num("1","1")
   # print make_path_from_folder_and_batch_num("5","2")
