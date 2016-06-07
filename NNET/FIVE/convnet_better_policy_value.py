@@ -1338,12 +1338,30 @@ def random_board_results_iterator():
   print("exit iterator")
 
 
-def random_board_input_output_iterator():
+def random_board_input_softmax_output_iterator():
+  BATCH_SIZE = 200
   with open('./random_board_softmax_output.txt') as f:
     while True:
-      pass
+      inputs = []
+      outputs = []
+      broken = False
+      for i in xrange(BATCH_SIZE):
+        line = f.readline()
+        if line == '':
+          print('done with iteration, hit end of file for random_board_input_out')
+          broken = True
+          break
+        line_obj = json.loads(line.strip())
+        inputs.append(line_obj['board_input_serialized'])
+        outputs.append(line_obj['softmax_output_serialized'])
+      if broken == True:
+        break
+      inputs_np = np.asarray(inputs, dtype=np.float32)
+      outputs_np = np.asarray(outputs, dtype=np.float32)
+      yield inputs_np, outputs_np
+  print('exit iterator.')
 
-  pass
+
 
 
 # def random_board_results_input_output_iterator():
@@ -1592,19 +1610,19 @@ def train_policy_from_value_on_random_boards(f_name):
   l2_error_list = []
   num = 0
 
-  for inputs, outputs in policy_input_output_from_random_board_iterator(convbot, temp=0.66):
+  for inputs, outputs in random_board_input_softmax_output_iterator():
     err, who_cares, result_policy = convbot.sess.run([mean_square_policy, train_step_winning_policy, softmax_output_policy], feed_dict={
       x_policy : inputs,
       softmax_output_goal_policy : outputs
     });
-    if num % 10 == 0:
+    if num % 200 == 0:
       print('target: ')
       print(outputs[13])
       print('results: ')
       print(result_policy[13])
     num += 1
-    print(num)
-    if num % 10 == 0:
+    # print(num)
+    if num % 20 == 0:
       l2_err, who_cares = convbot.sess.run([l2_error_total_policy, train_step_l2_reg_policy], feed_dict={
         x_policy : inputs
       })
@@ -1748,8 +1766,9 @@ if __name__ == '__main__':
 
   # create_random_starters_for_folder("test")
   # create_random_starters_for_folders(['1','2','3'])
-
-  train_policy_from_value_on_random_boards('test')
+  for i in xrange(50):
+    train_policy_from_value_on_random_boards('test')
+    print("Finished with training epoch: " + str(i))
 
   
 
