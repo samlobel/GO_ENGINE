@@ -42,7 +42,7 @@ FOLDER_NAME = 'test'
 #   print 'exit iterator'
 
 
-def board_to_result_obj(convbot, board, current_turn=1, temp=0.5):
+def board_to_result_obj(convbot, board, current_turn=1, temp=0.1):
   board_np = np.asarray(board, dtype=np.float32)
   board_input = board_to_input_transform_value(board_np, [], current_turn)
   softmax_for_board = convbot.create_softmax_from_value_function(board_np, [], current_turn, temperature=temp)
@@ -65,8 +65,8 @@ def board_to_result_obj(convbot, board, current_turn=1, temp=0.5):
 
 def worker_loader(b_queue):
   i = 0
-  filename_in = './random_boards.txt'
-  with open(filename_in, 'r') as f_in:
+  # filename_in = './random_boards.txt'
+  with open(BOARDS_FILE, 'r') as f_in:
     while True:
       i += 1
       line = f_in.readline()
@@ -98,7 +98,7 @@ def worker_transform(b_queue, r_queue):
 
 
 def worker_writer(r_queue):
-  filename_out = './random_board_softmax_output.txt'
+  filename_out = './random_board_softmax_output_2.txt'
   i = 0
   time_now = time.time()
   with open(filename_out, 'a', buffering=1) as f_out:

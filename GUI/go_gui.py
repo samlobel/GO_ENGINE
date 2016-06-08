@@ -223,7 +223,8 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=566)
+      self.board_metadata['black_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
+      # Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=565)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_NEW(folder_name="1",batch_num=931)
 
@@ -240,7 +241,8 @@ class Board:
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_25_batch.ckpt")
                 
     if self.board_metadata['white_player'] == 'AI':
-      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=566)
+      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=3336)
+      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_NEW(folder_name="3",batch_num=871)
       # Convbot_NINE_POLICY_MOVETRAINED(folder_name="1", batch_num=961)
 
