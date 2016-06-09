@@ -2,6 +2,8 @@
 
 ### A modest attempt at cloning Google's AlphaGo algorithm
 
+Dingo forrester
+
 
 I think I should have a section where I talk about the methods I used so many times   that failed. Its sort of important to frame my successes and failures, in part to show how much I did, and in part to show what I learned. 
 
