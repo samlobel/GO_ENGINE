@@ -223,7 +223,7 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=3336)
+      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=570)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=565)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
