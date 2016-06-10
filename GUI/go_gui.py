@@ -41,6 +41,12 @@ import time
 # AI_1 = Convbot()
 # AI_2 = Random_Mover()
 
+FOLDER_BLACK = 'test'
+BATCH_NUM_BLACK 69
+
+FOLDER_WHITE = 'test'
+BATCH_NUM_WHITE 69
+
 
 class Board:
   def __init__(self):
@@ -223,7 +229,7 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=570)
+      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=FOLDER_BLACK, batch_num=BATCH_NUM_BLACK)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=565)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
@@ -242,7 +248,7 @@ class Board:
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_25_batch.ckpt")
                 
     if self.board_metadata['white_player'] == 'AI':
-      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=69)
+      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name=FOLDER_WHITE, batch_num=BATCH_NUM_WHITE)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_NEW(folder_name="3",batch_num=871)
       # Convbot_NINE_POLICY_MOVETRAINED(folder_name="1", batch_num=961)
@@ -312,7 +318,7 @@ class Board:
       print "no AI for player " + str(turn)
       return
 
-    # time.sleep(1.0)
+    time.sleep(1.0)
     best_move = the_ai.get_best_move(self.board_data, self.all_previous_boards, self.turn)
     print "best move: " + str(best_move) + " for turn: " + str(self.turn)
     if not util.move_is_valid(self.board_data, best_move, self.turn, self.all_previous_boards):
