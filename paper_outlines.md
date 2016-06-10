@@ -99,7 +99,7 @@ And finally, interestingly enough you can use the same convolving filters on boa
 + The function "train_from_on_policy_board_results" in the file "./NNET/FIVE/convnet_better_policy_value.py" trains the value function from these results.
 
 ### Screenshots of Games:
-Here's evidence of the most recently-trained bot beating both me and a previous version of itself (playing as either color) on my GUI.
+Here's evidence of the most recently-trained bot beating both me and a previous version of itself on my GUI.
 
 ##### NEWEST BOT BEATING ME
 Board 1: ![B1](./Writeup/pictures_of_go_board/ME_VS_AI/B_1.png) Board 2: ![B1](./Writeup/pictures_of_go_board/ME_VS_AI/B_2.png) 
@@ -112,12 +112,5 @@ Board 1 ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_1.png
 Board 3: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_3.png) Board 4: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_4.png) 
 
 Board 5: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_5.png) End Result: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_6.png)
-
-##### NEWEST BOT (W) BEATING OLDER TRAINED BOT (B)
-Board 1 ![B1](./Writeup/pictures_of_go_board/BAD_AI_BLACK_GOOD_ONE_WHITE/B_1.png) Board 2: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_2.png) 
-
-Board 3: ![B1](./Writeup/pictures_of_go_board/BAD_AI_BLACK_GOOD_ONE_WHITE/B_3.png) Board 4: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_4.png) 
-
-Board 5: ![B1](./Writeup/pictures_of_go_board/BAD_AI_BLACK_GOOD_ONE_WHITE/B_5.png) End Result: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_6.png)
 
 
