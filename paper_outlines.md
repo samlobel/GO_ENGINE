@@ -103,16 +103,21 @@ Here's evidence of the most recently-trained bot beating both me and a previous 
 
 ##### NEWEST BOT BEATING ME
 Board 1: ![B1](./Writeup/pictures_of_go_board/ME_VS_AI/B_1.png) Board 2: ![B1](./Writeup/pictures_of_go_board/ME_VS_AI/B_2.png) 
+
 Board 3: ![B1](./Writeup/pictures_of_go_board/ME_VS_AI/B_3.png) End Result: ![B1](./Writeup/pictures_of_go_board/ME_VS_AI/B_4.png)
 
 ##### NEWEST BOT (B) BEATING OLDER TRAINED BOT (W)
 Board 1 ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_1.png) Board 2: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_2.png) 
+
 Board 3: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_3.png) Board 4: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_4.png) 
+
 Board 5: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_5.png) End Result: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_6.png)
 
 ##### NEWEST BOT (W) BEATING OLDER TRAINED BOT (B)
 Board 1 ![B1](./Writeup/pictures_of_go_board/BAD_AI_BLACK_GOOD_ONE_WHITE/B_1.png) Board 2: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_2.png) 
+
 Board 3: ![B1](./Writeup/pictures_of_go_board/BAD_AI_BLACK_GOOD_ONE_WHITE/B_3.png) Board 4: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_4.png) 
+
 Board 5: ![B1](./Writeup/pictures_of_go_board/BAD_AI_BLACK_GOOD_ONE_WHITE/B_5.png) End Result: ![B1](./Writeup/pictures_of_go_board/GOOD_AI_BLACK_OLD_ONE_WHITE/B_6.png)
 
 
