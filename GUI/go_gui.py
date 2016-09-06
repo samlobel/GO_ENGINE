@@ -29,8 +29,9 @@ from go_util import util
 
 # from NNET.NINE.convnet_movetrained_first import Convbot_NINE_POLICY_MOVETRAINED
 # from NNET.FIVE.convnet_new import Convbot_FIVE_NEW
-from NNET.FIVE.convnet_better_policy_value import Convbot_FIVE_POLICY_VALUE_NEWEST
+# from NNET.FIVE.convnet_better_policy_value import Convbot_FIVE_POLICY_VALUE_NEWEST
 
+from NNET.NEW_ATTEMPT.clean_convnet import Convbot_Clean
 from NNET.NINE.random_mover import Random_Mover
 
 import time
@@ -212,7 +213,7 @@ class Board:
     self.radius = self.line_gap / 2.2
     self.turn = 1
     self.moves = []
-    self.all_previous_boards = []
+    self.all_previous_boards = [None]
     self.board_metadata = {
       'shape' : (self.columns.get(), self.columns.get()),
       'white_player' : self.white_player.get(),
@@ -223,7 +224,8 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      self.board_metadata['black_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=3336)
+      self.board_metadata['black_AI'] = Convbot_Clean()
+      # Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=3336)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=565)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
@@ -242,7 +244,8 @@ class Board:
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_25_batch.ckpt")
                 
     if self.board_metadata['white_player'] == 'AI':
-      self.board_metadata['white_AI'] = Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=69)
+      self.board_metadata['white_AI'] = Convbot_Clean()
+      # Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=69)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_FIVE_NEW(folder_name="3",batch_num=871)
       # Convbot_NINE_POLICY_MOVETRAINED(folder_name="1", batch_num=961)
@@ -268,7 +271,7 @@ class Board:
 
 
     # self.previous_board = np.zeros((self.columns.get(), self.columns.get()), dtype=np.int)
-    self.all_previous_boards = []
+    self.all_previous_boards = [None]
     self.board_data = np.zeros((self.columns.get(), self.columns.get()), dtype=np.int)
     self.canvas.delete('all')
 
@@ -313,9 +316,9 @@ class Board:
       return
 
     # time.sleep(1.0)
-    best_move = the_ai.get_best_move(self.board_data, self.all_previous_boards, self.turn)
+    best_move = the_ai.get_best_move(self.board_data, self.all_previous_boards[-1], self.turn, len(self.all_previous_boards))
     print "best move: " + str(best_move) + " for turn: " + str(self.turn)
-    if not util.move_is_valid(self.board_data, best_move, self.turn, self.all_previous_boards):
+    if not util.move_is_valid(self.board_data, best_move, self.turn, self.all_previous_boards[-1]):
       print "tried an invalid move!"
     self.clicked_at_location(best_move)
 
@@ -336,15 +339,15 @@ class Board:
     if self.disabled:
       print "disabled, cannot click"
       return
-    if util.move_is_valid(self.board_data, click_location, self.turn, self.all_previous_boards):
+    if util.move_is_valid(self.board_data, click_location, self.turn, self.all_previous_boards[-1]):
       print "clicking for turn: " + str(self.color_map[self.turn]) + "\n\n\n"
       new_board = util.update_board_from_move(self.board_data, click_location, self.turn)
       # self.previous_board = self.board_data
       self.all_previous_boards.append(copy(self.board_data))
       self.board_data = new_board
       self.moves.append(click_location)
-      if (len(self.moves) != len(self.all_previous_boards)):
-        raise Exception("Moves and boards NEED to be equal!")
+      # if (len(self.moves) != len(self.all_previous_boards)):
+      #   raise Exception("Moves and boards NEED to be equal!")
       print self.board_data
       
       self.draw_board_data()

@@ -21,3 +21,7 @@ Especially because you can train policy easily at the end.
 I should make it SUPER modular in terms of board size. 
 
 Alright, here it goes....
+
+### INTERESTING PAPERS TO IMPLEMENT
+http://arxiv.org/pdf/1603.05027v3.pdf
+ResNets make sense, of course. I want to see if I can make it work even better.

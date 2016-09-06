@@ -8,7 +8,11 @@ import random
 # def get_board_shape(board_matrix):
 #   return board.shape
 
+PRINT_DEBUG=False
+
 """
+I NEED TO REMOVE THE ALL PREVIOUS BOARDS PART...
+
 An interesting thing is that, maybe to prevent repitition, the only
 thing we can do is pass in the ENTIRE go history. I don't know,
 this seems a little excessive, but it would prevent the repetition that
@@ -23,6 +27,10 @@ I think I do need to do this. That sucks, that's a lot of work. But I've got to.
 """
 
 
+def debug_print(string):
+  if PRINT_DEBUG:
+    print string
+
 
 
 
@@ -32,8 +40,6 @@ def flatten_list(l):
 
 def unflatten_list(l, desired_shape):
   return np.asarray(l).reshape(desired_shape)
-
-
 
 
 def boards_are_equal(b1, b2):
@@ -443,7 +449,7 @@ def update_board_from_move(board_matrix, move_tuple, current_player):
 
 
 
-def move_makes_duplicate(board_matrix, move_tuple, current_player, all_previous_boards):
+def move_makes_duplicate(board_matrix, move_tuple, current_player, previous_board):
   """
   this should happen after suicide. I won't call suicide in it though because they
   should always be called in tandem.
@@ -451,45 +457,53 @@ def move_makes_duplicate(board_matrix, move_tuple, current_player, all_previous_
   """
   if move_tuple is None:
     return False
-  if len(all_previous_boards) == 0:
+  if previous_board is None:
     return False
 
-  first = all_previous_boards[0]
-  if len(first.shape) != 2:
-    print all_previous_boards
-    raise Exception("Calling move_makes_duplicate with the above as all_previous_boards")
-
-  # I'm really relying on always having an accurate list of these. So, I can say:
   updated_board = update_board_from_move(board_matrix, move_tuple, current_player)
-
-  # place_to_start == -1
-  # if current_player == 1:
-  #   place_to_start = 0
-  # elif current_player == -1:
-  #   place_to_start = 1
-  # else:
-  #   raise Exception("current_player is not -1 or 1, in move_makes_duplicate")
-
-  # indices_to_compare = range(place_to_start, len(all_previous_boards), 2)
-  # You always want to compare to the most recent previous, because that was YOU!
-  all_indices = range(0, len(all_previous_boards))
-  indices_to_compare = list(reversed(all_indices))[0::2]
-  # print('current_player: ' + str(current_player) + '. list of indices: ')
-  # print(indices_to_compare)
-  for index in indices_to_compare:
-    # print(index)
-    board_at_index = all_previous_boards[index]
-    if boards_are_equal(board_at_index, updated_board):
-      return True
-    else:
-      continue
-  # If it gets here, there were no duplicates.
+  if boards_are_equal(updated_board, previous_board):
+    debug_print('boards are equal')
+    return True
+  debug_print('boards are not equal')
   return False
 
 
+  # first = all_previous_boards[0]
+  # if len(first.shape) != 2:
+  #   print all_previous_boards
+  #   raise Exception("Calling move_makes_duplicate with the above as all_previous_boards")
+
+  # # I'm really relying on always having an accurate list of these. So, I can say:
+  # updated_board = update_board_from_move(board_matrix, move_tuple, current_player)
+
+  # # place_to_start == -1
+  # # if current_player == 1:
+  # #   place_to_start = 0
+  # # elif current_player == -1:
+  # #   place_to_start = 1
+  # # else:
+  # #   raise Exception("current_player is not -1 or 1, in move_makes_duplicate")
+
+  # # indices_to_compare = range(place_to_start, len(all_previous_boards), 2)
+  # # You always want to compare to the most recent previous, because that was YOU!
+  # all_indices = range(0, len(all_previous_boards))
+  # indices_to_compare = list(reversed(all_indices))[0::2]
+  # # print('current_player: ' + str(current_player) + '. list of indices: ')
+  # # print(indices_to_compare)
+  # for index in indices_to_compare:
+  #   # print(index)
+  #   board_at_index = all_previous_boards[index]
+  #   if boards_are_equal(board_at_index, updated_board):
+  #     return True
+  #   else:
+  #     continue
+  # # If it gets here, there were no duplicates.
+  # return False
 
 
-def move_is_valid(board_matrix, move_tuple, current_player, all_previous_boards):
+
+
+def move_is_valid(board_matrix, move_tuple, current_player, previous_board):
   """
   The three reasons it wouldn't be are that 
   a) it makes a duplicate position.
@@ -497,8 +511,8 @@ def move_is_valid(board_matrix, move_tuple, current_player, all_previous_boards)
   c) there's already something there.
   """
 
-  if all_previous_boards is None:
-    raise Exception("You can pass a list to all_previous_boards, but not nothing!")
+  # if previous_board is None:
+  #   raise Exception("You can pass a list to all_previous_boards, but not nothing!")
 
   if move_tuple is None:
     return True
@@ -510,7 +524,7 @@ def move_is_valid(board_matrix, move_tuple, current_player, all_previous_boards)
     return False
 
   # print "in move_is_valid"
-  if move_makes_duplicate(board_matrix, move_tuple, current_player, all_previous_boards):
+  if move_makes_duplicate(board_matrix, move_tuple, current_player, previous_board):
     return False
 
   # I think that's it.
@@ -551,15 +565,15 @@ def move_is_eye(board_matrix, move_tuple, current_player, stack=[]):
 
   return True
 
-def move_is_valid_and_sensible(board_matrix, move_tuple, current_player, all_previous_boards):
-  if not move_is_valid(board_matrix, move_tuple, current_player, all_previous_boards):
+def move_is_valid_and_sensible(board_matrix, move_tuple, current_player, previous_board):
+  if not move_is_valid(board_matrix, move_tuple, current_player, previous_board):
     return False
   if move_is_eye(board_matrix, move_tuple, current_player):
     return False
   return True
 
 
-def output_one_valid_sensible_move(board_matrix, all_previous_boards, current_player):
+def output_one_valid_sensible_move(board_matrix, previous_board, current_player):
   shape = board_matrix.shape
   l1 = range(shape[0])
   l2 = range(shape[1])
@@ -570,13 +584,13 @@ def output_one_valid_sensible_move(board_matrix, all_previous_boards, current_pl
   # print l2
   for i in l1:
     for j in l2:
-      if move_is_valid_and_sensible(board_matrix, (i,j), current_player, all_previous_boards):
+      if move_is_valid_and_sensible(board_matrix, (i,j), current_player, previous_board):
         return (i,j)
   return None
 
 
 
-def output_one_valid_move(board_matrix, all_previous_boards, current_player):
+def output_one_valid_move(board_matrix, previous_board, current_player):
   free_spaces = 0
   shape = board_matrix.shape
   # print shape
@@ -594,7 +608,7 @@ def output_one_valid_move(board_matrix, all_previous_boards, current_player):
 
   for i in l1:
     for j in l2:
-      if move_is_valid(board_matrix, (i,j), current_player, all_previous_boards):
+      if move_is_valid(board_matrix, (i,j), current_player, previous_board):
         return (i,j)
   # print "No Valid Moves. Huh."
   return None
@@ -605,11 +619,11 @@ def output_one_valid_move(board_matrix, all_previous_boards, current_player):
   First, with probability 1/free_spaces, output None.
   """
 
-def output_all_valid_sensible_moves(board_matrix, all_previous_boards, current_player):
+def output_all_valid_sensible_moves(board_matrix, previous_board, current_player):
   valid_moves = set([])
   length, width = board_matrix.shape
   for m_t in move_tuples_on_board(board_matrix):
-    if move_is_valid_and_sensible(board_matrix, m_t, current_player, all_previous_boards):
+    if move_is_valid_and_sensible(board_matrix, m_t, current_player, previous_board):
       valid_moves.add(m_t)
 
   # NO NONE! You'll do this if there's nothing left to do otherwise, because thats.
@@ -618,7 +632,7 @@ def output_all_valid_sensible_moves(board_matrix, all_previous_boards, current_p
   # valid_moves.add(None)
   return valid_moves
 
-def output_all_valid_moves(board_matrix, all_previous_boards, current_player):
+def output_all_valid_moves(board_matrix, previous_board, current_player):
   """
   given a board and a previous board, retuns an array of all possible
   move-tuples.
@@ -626,26 +640,26 @@ def output_all_valid_moves(board_matrix, all_previous_boards, current_player):
   valid_moves = set([])
   length, width = board_matrix.shape
   for m_t in move_tuples_on_board(board_matrix):
-    if move_is_valid(board_matrix, m_t, current_player, all_previous_boards):
+    if move_is_valid(board_matrix, m_t, current_player, previous_board):
       valid_moves.add(m_t)
 
   valid_moves.add(None)
   return valid_moves
 
-def output_valid_sensible_moves_boardmap(board_matrix, all_previous_boards, current_player):
+def output_valid_sensible_moves_boardmap(board_matrix, previous_board, current_player):
   if board_matrix is None:
     raise Exception("I dont really know how to handle board_matrix being none in output_valid_moves_boardmap")
-  valid_moves = output_all_valid_sensible_moves(board_matrix, all_previous_boards, current_player)
+  valid_moves = output_all_valid_sensible_moves(board_matrix, previous_board, current_player)
   # print valid_moves
   boardmap = np.zeros(board_matrix.shape, dtype=np.float32)
   for move in valid_moves:
     set_value_for_spot(boardmap, move, 1.0)
   return boardmap
 
-def output_valid_moves_boardmap(board_matrix, all_previous_boards, current_player):
+def output_valid_moves_boardmap(board_matrix, previous_board, current_player):
   if board_matrix is None:
     raise Exception("I dont really know how to handle board_matrix being none in output_valid_moves_boardmap")
-  valid_moves = output_all_valid_moves(board_matrix, all_previous_boards, current_player)
+  valid_moves = output_all_valid_moves(board_matrix, previous_board, current_player)
   boardmap = np.zeros(board_matrix.shape)
   for move in valid_moves:
     if move is None:
@@ -654,10 +668,10 @@ def output_valid_moves_boardmap(board_matrix, all_previous_boards, current_playe
       set_value_for_spot(boardmap, move, 1)
   return boardmap
 
-def output_valid_moves_mask(board_matrix, all_previous_boards, current_player):
+def output_valid_moves_mask(board_matrix, previous_board, current_player):
   if board_matrix is None:
     raise Exception("I dont really know how to handle board_matrix being none in output_valid_moves_boardmap")
-  valid_moves = output_all_valid_moves(board_matrix, all_previous_boards, current_player)
+  valid_moves = output_all_valid_moves(board_matrix, previous_board, current_player)
   shape = board_matrix.shape
   move_array = np.zeros(shape[0]*shape[1] +1, dtype=np.float32)
 
@@ -836,28 +850,29 @@ def generate_random_board(board_shape, total_moves):
   Generates random board, starting with black's move.
   Returns the generated board, plus the person who gets to move next.
   """
-  all_previous_boards = []
-  # last_board = np.zeros(board_shape)
+  # all_previous_boards = []
+  previous_board = None
   current_board = np.zeros(board_shape)
   next_turn = 1
   for i in xrange(total_moves):
-    if len(all_previous_boards) >= 5:
-      all_previous_boards = all_previous_boards[2:len(all_previous_boards)-1]
+    # if len(all_previous_boards) >= 5:
+    #   all_previous_boards = all_previous_boards[2:len(all_previous_boards)-1]
     # valid_moves = output_all_valid_moves(current_board, all_previous_boards, next_turn)
     # if len(valid_moves) == 0:
     #   print "Looks like we got stuck at some point, try simulating less far."
     #   return None, None
     # valid_move = random.choice(list(valid_moves))
-    valid_move = output_one_valid_move(current_board, all_previous_boards, next_turn)
+
+    valid_move = output_one_valid_sensible_move(current_board, previous_board, next_turn)
     new_board = update_board_from_move(current_board, valid_move, next_turn)
     # last_board = current_board
-    all_previous_boards.append(current_board)
+    previous_board = current_board
     current_board = new_board
-    next_turn = next_turn * -1
+    next_turn *= -1
   return current_board, next_turn
 
 
-def determine_random_winner_of_board(input_board, current_turn, all_previous_boards=[]):
+def determine_random_winner_of_board(input_board, current_turn, previous_board=None, handicap=0.5):
   all_moves = []
   current_board = np.copy(input_board)
   while True:
@@ -865,17 +880,75 @@ def determine_random_winner_of_board(input_board, current_turn, all_previous_boa
       # print("Game is over!")
       break
 
-    this_move = output_one_valid_sensible_move(current_board, all_previous_boards, current_turn)
+    this_move = output_one_valid_sensible_move(current_board, previous_board, current_turn)
     new_board = update_board_from_move(current_board, this_move, current_turn)
     
     all_moves.append(this_move)
-    all_previous_boards.append(current_board)
+    previous_board = current_board
     current_board = new_board
     current_turn *= -1
 
-  # print("Game completed, lasted " + str(len(all_moves)) + " more turns")
+  debug_print("Game completed, lasted " + str(len(all_moves)) + " more turns")
   winner = determine_winner(current_board)
   return winner
+
+
+def split_board(board_matrix, current_turn):
+  """
+  returns where_me, where_blank, where_you
+  """
+  shape = board_matrix.shape
+  where_this_player = np.zeros(shape, dtype=np.float32)
+  where_other_player = np.zeros(shape, dtype=np.float32)
+  where_blank = np.zeros(shape, dtype=np.float32)
+
+  val_map = {
+    1   : where_this_player,
+    0   : where_blank,
+    -1  : where_other_player
+  }
+  for move in move_tuples_on_board(board_matrix):
+    board_val = get_value_for_spot(board_matrix, move)
+    val_key = board_val * current_turn # get it?
+    proper_board = val_map[val_key]
+    set_value_for_spot(proper_board, move, 1.0)
+
+  return where_this_player, where_blank, where_other_player
+
+
+def split_liberties(liberty_map, current_turn):
+  """
+  Returns liberty map, clipped at three.
+  """
+  shape = liberty_map.shape
+
+  where_me_one = np.zeros(shape, dtype=np.float32)
+  where_me_two = np.zeros(shape, dtype=np.float32)
+  where_me_gt_two = np.zeros(shape, dtype=np.float32)
+  where_they_one = np.zeros(shape, dtype=np.float32)
+  where_they_two = np.zeros(shape, dtype=np.float32)
+  where_they_gt_two = np.zeros(shape, dtype=np.float32)
+  where_zero = np.zeros(shape, dtype=np.float32) #Not returning this one, who cares.
+
+  val_map = {
+    -3  : where_they_gt_two,
+    -2  : where_they_two,
+    -1  : where_they_one,
+     0  : where_zero,
+     1  : where_me_one,
+     2 : where_me_two,
+     3 : where_me_gt_two
+  }
+
+  for move in move_tuples_on_board(liberty_map):
+    board_val = get_value_for_spot(liberty_map, move)
+    board_val_clipped = max(min(board_val,3),-3)
+    val_key = board_val_clipped * current_turn # get it?
+    proper_board = val_map[val_key]
+    set_value_for_spot(proper_board, move, 1.0)
+
+  return where_me_gt_two, where_me_two, where_me_one,\
+          where_they_one, where_they_two, where_they_gt_two
 
 
 if __name__ == '__main__':
@@ -883,7 +956,7 @@ if __name__ == '__main__':
   random_board, start = generate_random_board((5,5),10)
   print random_board
   for i in range(10):
-    print output_one_valid_move(random_board, [], start)
+    print output_one_valid_move(random_board, None, start)
   # print output_one_valid_move(random_board, random_board, start)
   # print output_one_valid_move(random_board, random_board, start)
   # print output_one_valid_move(random_board, random_board, start)
