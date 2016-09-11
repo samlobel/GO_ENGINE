@@ -21,11 +21,13 @@ class Random_Mover(GoBot):
     GoBot.__init__(self)
     self.board_shape = shape
 
-  def get_best_move(self, board_matrix, previous_board, current_turn):
-    valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, current_turn))
-    valid_moves.append(None)
-    valid_move = random.choice(list(valid_moves))
-    return valid_move
+  def get_best_move(self, board_matrix, previous_board, current_turn, turn_number):
+    move = util.output_one_valid_sensible_move(board_matrix, previous_board, current_turn)
+    return move
+    # valid_moves = list(util.output_all_valid_moves(board_matrix, previous_board, current_turn))
+    # valid_moves.append(None)
+    # valid_move = random.choice(list(valid_moves))
+    # return valid_move
 
 
 

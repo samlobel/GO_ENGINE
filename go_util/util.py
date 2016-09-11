@@ -4,11 +4,13 @@ import tensorflow as tf
 from copy import deepcopy as copy
 import random
 
+import math
+
 
 # def get_board_shape(board_matrix):
 #   return board.shape
 
-PRINT_DEBUG=False
+PRINT_DEBUG=True
 
 """
 I NEED TO REMOVE THE ALL PREVIOUS BOARDS PART...
@@ -179,6 +181,25 @@ def get_neighbors_of_color(board_matrix, spot_tuple, color):
 
 
 
+def has_liberties(board_matrix, set_of_seen, border_set, current_player,
+        liberties_so_far=0):
+  if current_player not in (-1,1):
+    print "current player not -1 or 1."
+    raise Exception("bad validation for current_player in count_liberties")
+  set_of_seen = set([])
+  while len(border_set) != 0:
+    set_of_seen = set_of_seen.union(border_set)
+    new_border_set = set([])
+    for move_tuple in border_set:
+      if spot_is_open(board_matrix, move_tuple):
+        return True
+      elif spot_is_color(board_matrix, move_tuple, current_player):
+        neighbors_on_board = set(get_neighbors_on_board(board_matrix, move_tuple))
+        new_neighbors_on_board = neighbors_on_board.difference(set_of_seen)
+        new_border_set = new_border_set.union(new_neighbors_on_board)
+    border_set = new_border_set
+  return False
+
 
 
 
@@ -250,6 +271,14 @@ def count_liberties_around_stone(board_matrix, spot_in_group):
   color = get_value_for_spot(board_matrix, spot_in_group)
   liberties = count_liberties(board_matrix, set([]), set([spot_in_group]), color, 0)
   return liberties
+
+def stone_has_liberties(board_matrix, spot_in_group):
+  if spot_is_open(board_matrix, spot_in_group):
+    raise Exception("Counting liberties of empty spot")
+
+  color = get_value_for_spot(board_matrix, spot_in_group)
+  spot_has_liberties = has_liberties(board_matrix, set([]), set([spot_in_group]), color, 0)
+  return spot_has_liberties
 
 
 def get_group_around_stone(board_matrix, spot_tuple):
@@ -376,6 +405,19 @@ def spot_is_suicide(board_matrix, move_tuple, current_player):
   We also need to check if it would make captures. I would do this by checking all
   of the neighbors for spots that are the opposite colors, and seeing if any
   of them would be converted. I guess that's the first thing I should do.
+
+  It makes sense to check if it will have zero liberties, before
+  we check if they have zero liberties.
+
+
+  First, fill it in. Then check if it has liberties. If it does, you're good.
+
+  If it doesn't, you may be good if one of its neighbors doesn't either.
+  Check if each neighbor has liberties. If one doesn't, you're good. If 
+  all have liberties, you're suicided.
+
+
+
   """
   if not spot_is_open(board_matrix, move_tuple):
     raise Exception("Asking about a taken spot for spot_is_suicide")
@@ -383,21 +425,28 @@ def spot_is_suicide(board_matrix, move_tuple, current_player):
   board_copy = copy(board_matrix)
   set_value_for_spot(board_copy, move_tuple, current_player)
 
+  spot_has_liberties = stone_has_liberties(board_copy, move_tuple)
+  if spot_has_liberties:
+    # After we've placed it it still has exposure. So it's not suicide
+    return False
+
   other_player_neighbors = get_neighbors_of_color(board_copy, move_tuple, -1*current_player)
-  other_player_liberties = [count_liberties_around_stone(board_copy, m_t) for m_t in other_player_neighbors]
+  other_player_liberties = [stone_has_liberties(board_copy, m_t) for m_t in other_player_neighbors]
   for o_p_l in other_player_liberties:
-    if o_p_l == 0:
+    if not o_p_l:
+      # No liberties for them, so you take it, so you're good.
       return False
     else:
       continue
+  return True
 
   # At this point, we know it won't remove any neighbors.
-  this_spot_liberties = count_liberties_around_stone(board_copy, move_tuple)
+  # this_spot_liberties = count_liberties_around_stone(board_copy, move_tuple)
 
-  if this_spot_liberties == 0:
-    return True
-  else:
-    return False
+  # if this_spot_liberties == 0:
+  #   return True
+  # else:
+  #   return False
 
 
 def update_board_from_move(board_matrix, move_tuple, current_player):
@@ -462,9 +511,9 @@ def move_makes_duplicate(board_matrix, move_tuple, current_player, previous_boar
 
   updated_board = update_board_from_move(board_matrix, move_tuple, current_player)
   if boards_are_equal(updated_board, previous_board):
-    debug_print('boards are equal')
+    # debug_print('boards are equal')
     return True
-  debug_print('boards are not equal')
+  # debug_print('boards are not equal')
   return False
 
 
@@ -561,8 +610,7 @@ def move_is_eye(board_matrix, move_tuple, current_player, stack=[]):
         num_bad_diagonals += 1
       stack.pop()
     if num_bad_diagonals > allowed_bad_diagonals:
-      return False 
-
+      return False
   return True
 
 def move_is_valid_and_sensible(board_matrix, move_tuple, current_player, previous_board):
@@ -830,7 +878,6 @@ def score_board(current_board):
     'neg' : num_neg
   }
 
-
 def determine_winner(current_board, handicap=0.5):
 
   scores = score_board(current_board)
@@ -854,7 +901,9 @@ def generate_random_board(board_shape, total_moves):
   previous_board = None
   current_board = np.zeros(board_shape)
   next_turn = 1
+  moves = []
   for i in xrange(total_moves):
+
     # if len(all_previous_boards) >= 5:
     #   all_previous_boards = all_previous_boards[2:len(all_previous_boards)-1]
     # valid_moves = output_all_valid_moves(current_board, all_previous_boards, next_turn)
@@ -869,13 +918,22 @@ def generate_random_board(board_shape, total_moves):
     previous_board = current_board
     current_board = new_board
     next_turn *= -1
+    moves.append(valid_move)
+    if len(moves) >= 2 and moves[-1] is None and moves[-2] is None:
+      print('\n\n\n\ngame ended, not good.\n\n\n\n')
+      return None, None    
   return current_board, next_turn
 
 
 def determine_random_winner_of_board(input_board, current_turn, previous_board=None, handicap=0.5):
+  shape = input_board.shape
+  max_moves = shape[0]*shape[1]*4 #for 5x5, that's 100.
   all_moves = []
+
   current_board = np.copy(input_board)
   while True:
+    if len(all_moves) > max_moves:
+      return None
     if (len(all_moves) >= 2) and all_moves[-1] is None and all_moves[-2] is None:
       # print("Game is over!")
       break
@@ -887,8 +945,9 @@ def determine_random_winner_of_board(input_board, current_turn, previous_board=N
     previous_board = current_board
     current_board = new_board
     current_turn *= -1
+    # debug_print('move length now is: ' + str(len(all_moves)))
 
-  debug_print("Game completed, lasted " + str(len(all_moves)) + " more turns")
+  # debug_print("Game completed, lasted " + str(len(all_moves)) + " more turns")
   winner = determine_winner(current_board)
   return winner
 
@@ -949,6 +1008,40 @@ def split_liberties(liberty_map, current_turn):
 
   return where_me_gt_two, where_me_two, where_me_one,\
           where_they_one, where_they_two, where_they_gt_two
+
+
+
+
+def get_softmax_index(array, temp=0.5):
+  if len(array) == 0:
+    raise Exception('NEVER CALL SOFTMAX WITH NOTHING IN IT!')
+  if temp <= 0.001: 
+    raise Exception("Temp must be above zero. It's " + str(temp) + "now")
+  transformed_arr = [math.exp(elem / temp) for elem in array]
+  sum_transformed = sum(transformed_arr)
+  normalized = [elem / sum_transformed for elem in transformed_arr]
+  new_sum = sum(normalized)
+  if abs(new_sum-1.0) >= 0.001:
+    raise Exception("new sum shuold be very close to one. It's " + str(new_sum))
+
+  random_float = random.random()
+  sum_so_far = 0.0
+  for i in range(len(array)):
+    val = normalized[i]
+    sum_so_far += val
+    if sum_so_far >= random_float:
+      return i
+  raise Exception("not caught. Maybe add more debugging here.")
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
