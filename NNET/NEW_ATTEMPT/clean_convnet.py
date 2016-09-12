@@ -209,7 +209,7 @@ class Convbot_Clean(GoBot):
         obj = json.loads(contents)
         return obj
     except Exception:
-      print "No Config to load!"
+      print ("No Config to load!")
       obj = [False for f in self.vn_arr]
       return obj
 
