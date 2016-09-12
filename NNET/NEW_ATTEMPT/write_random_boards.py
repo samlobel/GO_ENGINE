@@ -50,7 +50,6 @@ def get_boards_file(min_turn, max_turn):
 def return_random_board(num_moves):
   board, turn = util.generate_random_board(BOARD_SHAPE, num_moves)
   if board is None:
-    print "board is none."
     return None
   board_ = np.ndarray.tolist(board)
   to_return = {
