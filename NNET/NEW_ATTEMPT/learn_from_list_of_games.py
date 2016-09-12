@@ -12,19 +12,21 @@ from multiprocessing import Process, Queue
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../.'))
 
 from go_util import util
+import math
 
 from NNET.NEW_ATTEMPT import clean_convnet
 
-MIN_TURN = 10
-MAX_TURN=19
+# MIN_TURN = 10
+# MAX_TURN=19
 def get_filename_in(MIN_TURN, MAX_TURN):
     return os.path.join('.', 'training_data', 'random_board_results_'+str(MIN_TURN)+'_to_'+str(MAX_TURN)+'.txt')
 # FILENAME_IN = os.path.join('.', 'training_data', 'random_board_results_'+str(MIN_TURN)+'_to_'+str(MAX_TURN)+'.txt')
 
-TIMES_THROUGH = 1
+TIMES_THROUGH = 3
 
-def board_results_iterator():
+def board_results_iterator(MIN_TURN, MAX_TURN):
   BATCH_SIZE = 200
+  FILENAME_IN = get_filename_in(MIN_TURN, MAX_TURN)
   with open(FILENAME_IN, 'r') as f:
     while True:
       to_yield = [f.readline() for i in xrange(BATCH_SIZE)]
@@ -57,11 +59,13 @@ if __name__ == '__main__':
     print "doesn't match."
     raise Exception("Min and Max are from different indices, ya dingus!")
   VN_NUMBER = MIN_TURN_VN_IND
+  print('min: ' + str(MIN_TURN) + ' max: ' + str(MAX_TURN))
+  print('vn num: ' + str(VN_NUMBER))
 
 
   for i in range(TIMES_THROUGH):
     print 'DOING IT NOW. Informative...'
-    for result_obj_list in board_results_iterator():
+    for result_obj_list in board_results_iterator(MIN_TURN, MAX_TURN):
       err = BOT.learn_from_list_of_games(result_obj_list, VN_NUMBER)
       err_arr.append(err)
       if len(err_arr) % 100 == 0:

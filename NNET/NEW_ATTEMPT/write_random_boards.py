@@ -3,6 +3,7 @@ import os
 import numpy as np
 import json
 import time
+import math
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../.'))
 
@@ -18,8 +19,8 @@ import random
 # BOARDS_FILE = os.path.join(this_dir, 'training_data','random_boards.txt')
 BOARD_SHAPE = (5,5)
 
-MIN_TURN=10
-MAX_TURN=19
+# MIN_TURN=10
+# MAX_TURN=19
 
 # BOARDS_FILE = os.path.join(this_dir, \
 #   'training_data','random_boards_'+str(MIN_TURN)+'_to_'+str(MAX_TURN)+'.txt')
@@ -67,16 +68,17 @@ def return_random_board(num_moves):
 def worker_transform(b_queue, r_queue, MIN_TURN, MAX_TURN):
   while True:
     try:
-      i = b_queue.get(block=True, timeout=50)
-      j = random.randchoice(MIN_TURN,MAX_TURN)
+      i = b_queue.get(block=True, timeout=30)
+      j = random.randrange(MIN_TURN,MAX_TURN)
       board_arr = return_random_board(j)
       if board_arr is None:
         continue
       board_str = json.dumps(board_arr)
       board_str += '\n'
       r_queue.put(board_str)
-    except Exception:
+    except Exception as e:
       print 'exception in writer!'
+      print "Exception: " + str(e)
       break
 
 def worker_writer(r_queue, BOARDS_FILE):
@@ -85,15 +87,16 @@ def worker_writer(r_queue, BOARDS_FILE):
   with open(BOARDS_FILE, 'a', buffering=1) as f_out:
     while True:
       try:
-        board_str = r_queue.get(block=True, timeout=50)
+        board_str = r_queue.get(block=True, timeout=30)
         f_out.write(board_str)
         i += 1
         if i % 1000 == 0:
           print "boards written: " + str(i)
         if i % 5000 == 0:
           print "time taken: " + str(time.time() - time_now)
-      except Exception:
+      except Exception as e:
         print 'end of results queue!'
+        print "Exception: " + str(e)
         break
 
 
@@ -107,9 +110,13 @@ def worker_writer(r_queue, BOARDS_FILE):
 
 if __name__ == '__main__':
   num = 0
-  Q_in = Queue(maxsize=10000)
-  for i in range(8000):
+  print str(sys.argv)
+  print "making in queue"
+  Q_in = Queue()
+  print "filling it up"
+  for i in range(50000):
     Q_in.put(i)
+  print "Filled"
 
   if len(sys.argv) != 4:
     print "Bad arguments. Should be three optional ones."
@@ -131,7 +138,7 @@ if __name__ == '__main__':
   proc_out = Process(target=worker_writer, args=[Q_out, BOARDS_FILE])
   proc_out.start()
   for j in range(NUM_WORKERS):
-    proc_transform = Process(target=worker_transform, args=[Q_in,Q_out])
+    proc_transform = Process(target=worker_transform, args=[Q_in,Q_out, MIN_TURN, MAX_TURN])
     proc_transform.start()
     print "process kicked off: " + str(j)
   print "processes kicked off"

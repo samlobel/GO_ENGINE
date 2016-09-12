@@ -16,8 +16,8 @@ from go_util import util
 
 from NNET.NEW_ATTEMPT import clean_convnet
 
-MIN_TURN=10
-MAX_TURN=19
+# MIN_TURN=10
+# MAX_TURN=19
 
 
 
@@ -30,23 +30,9 @@ def get_filename_in(min_turn, max_turn):
   return FILENAME_IN
 
 def get_filename_out(min_turn, max_turn):
-  FILENAME_OUT = os.path.join('.', 'training_data', 'random_board_results_'+str(min_turn)+'_to_'+str(min_turn)+'.txt')
-  return FILENAME_IN
+  FILENAME_OUT = os.path.join('.', 'training_data', 'random_board_results_'+str(min_turn)+'_to_'+str(max_turn)+'.txt')
+  return FILENAME_OUT
 
-
-
-def random_board_iterator():
-  with open('./random_boards.txt') as f:
-    while True:
-      to_yield = f.readline().strip()
-      if to_yield == '':
-        break
-      try:
-        to_yield =  json.loads(to_yield)
-        yield to_yield
-      except Exception:
-        print "fail on to_yield=" + str(to_yield)
-  print 'exit iterator'
 
 def board_to_result_obj(BOT, read_obj, games_to_average=5):
   """
@@ -150,7 +136,7 @@ def worker_loader(b_queue, FILENAME_IN):
         print 'END OF FILE'
         break
       board_obj = json.loads(line)
-      b_queue.put(board_obj, block=True, timeout=100)
+      b_queue.put(board_obj, block=True, timeout=50)
       # print('put in number ' + str(i))
       # size = b_queue.qsize()
       # print('size: ' + str(size))
@@ -173,7 +159,7 @@ def worker_transform(b_queue, r_queue):
       i += 1
       if i % 50 == 0:
         print 'transforming number ' + str(i) + ' for this queue'
-      board_obj = b_queue.get(block=True, timeout=100)#, timeout=10)
+      board_obj = b_queue.get(block=True, timeout=50)#, timeout=10)
       # print 'board to result:'
       result_obj = board_to_result_obj(BOT, board_obj)
       # print 'board to result completed.'
@@ -184,20 +170,24 @@ def worker_transform(b_queue, r_queue):
       break
 
 def worker_writer(r_queue, FILENAME_OUT):
+  print "IN WORKER WRITER"
+  print "WRITING TO FILE: " + str(FILENAME_OUT)
   i = 0
   time_now = time.time()
+  print "In Write Results: "
+  print "FIlename Out: " + str(FILENAME_OUT)
   with open(FILENAME_OUT, 'a', buffering=1) as f_out:
     while True:
       try:
         i += 1
-        result_obj = r_queue.get(block=True, timeout=100)#, timeout=10)
+        result_obj = r_queue.get(block=True, timeout=50)#, timeout=10)
         json_result = json.dumps(result_obj)
         f_out.write(json_result)
         f_out.write('\n')
         if i % 50 == 0:
           print "wrote out " + str(i)
         if i % 100 == 0:
-          print "DONE. took " + str(time.time() - time_now) + " time"
+          print "DONE with 100. took " + str(time.time() - time_now) + " time"
       except Exception as e:
         print 'exception in writer!'
         print e
@@ -207,7 +197,7 @@ def worker_writer(r_queue, FILENAME_OUT):
 
 
 
-if __name__ t== '__main__':
+if __name__ == '__main__':
   print 'starting'
   # Mandatory arguments.
   BOARD_QUEUE = Queue(maxsize=1000)

@@ -431,6 +431,7 @@ def get_best_bot():
 
 
 
+
 def get_results_of_self_play(BOT, board_matrix, previous_board, current_turn, turn_number):
   """
   I should write two, one that plays all the way to the end, and one that plays until the
@@ -451,8 +452,7 @@ def get_results_of_self_play(BOT, board_matrix, previous_board, current_turn, tu
   max_turn_number = BOT.random_number_in_next_slot(turn_number)
   while True:
     if max_turn_number != None and turn_number >= max_turn_number:
-      print('game hit max_turn_number, truncating value.')
-      print("max_turn_number: " + str(max_turn_number) + ". turn_number: " + str(turn_number))
+      print('game hit max_turn_number, truncating value. At ' + str(max_turn_number))
       """Remember, this gives the value for the person before this turn.
       So if -1 is about to go, that means this value is the chance 1 is going to
       win. Which is the same as determine_winner. In other words, to get the winner,
@@ -472,8 +472,6 @@ def get_results_of_self_play(BOT, board_matrix, previous_board, current_turn, tu
         current_vn['x_'] : vn_input
       })
       # print("after sess.run current_vn['output'']")
-      print('returned val')
-      print(output_val)
 
       # Again, if current_turn is -1, and we get a 1, that means 1 wins. Confirmed.
       winner_val = (current_turn*-1)*output_val[0][0]

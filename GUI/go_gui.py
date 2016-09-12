@@ -30,7 +30,7 @@ from go_util import util
 # from NNET.NINE.convnet_movetrained_first import Convbot_NINE_POLICY_MOVETRAINED
 # from NNET.FIVE.convnet_new import Convbot_FIVE_NEW
 # from NNET.FIVE.convnet_better_policy_value import Convbot_FIVE_POLICY_VALUE_NEWEST
-
+from NNET.NEW_ATTEMPT import clean_convnet
 from NNET.NEW_ATTEMPT.clean_convnet import Convbot_Clean
 from NNET.NINE.random_mover import Random_Mover
 
@@ -245,7 +245,8 @@ class Board:
       # Convbot_FIVE(load_path="../NNET/FIVE/saved_models/basic_convnet/trained_on_25_batch.ckpt")
                 
     if self.board_metadata['white_player'] == 'AI':
-      self.board_metadata['white_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
+      self.board_metadata['white_AI'] = clean_convnet.get_best_bot()
+      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_Clean()
       # Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=69)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
