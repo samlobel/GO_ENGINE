@@ -22,7 +22,7 @@ def get_filename_in(MIN_TURN, MAX_TURN):
     return os.path.join('.', 'training_data', 'random_board_results_'+str(MIN_TURN)+'_to_'+str(MAX_TURN)+'.txt')
 # FILENAME_IN = os.path.join('.', 'training_data', 'random_board_results_'+str(MIN_TURN)+'_to_'+str(MAX_TURN)+'.txt')
 
-TIMES_THROUGH = 3
+TIMES_THROUGH = 6
 
 def board_results_iterator(MIN_TURN, MAX_TURN):
   BATCH_SIZE = 200
