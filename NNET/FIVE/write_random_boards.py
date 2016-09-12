@@ -25,7 +25,6 @@ BOARD_SHAPE = (5,5)
 def write_random_board(num_moves):
   board, turn = util.generate_random_board(BOARD_SHAPE, num_moves)
   if board is None:
-    print "board is none."
     return
   board_ = np.ndarray.tolist(board)
   board_str = json.dumps(board_)
@@ -37,7 +36,6 @@ def write_random_board(num_moves):
 def return_random_board(num_moves):
   board, turn = util.generate_random_board(BOARD_SHAPE, num_moves)
   if board is None:
-    print "board is none."
     return None
   board_ = np.ndarray.tolist(board)
   # board_str = json.dumps(board_)

@@ -920,7 +920,6 @@ def generate_random_board(board_shape, total_moves):
     next_turn *= -1
     moves.append(valid_move)
     if len(moves) >= 2 and moves[-1] is None and moves[-2] is None:
-      print('\n\n\n\ngame ended, not good.\n\n\n\n')
       return None, None    
   return current_board, next_turn
 
