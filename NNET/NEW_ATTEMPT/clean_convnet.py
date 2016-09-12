@@ -162,13 +162,14 @@ class Convbot_Clean(GoBot):
       self.folder_name = NAME_PREFIX
       self.batch_num = 0
       self.well_trained = [False for i in self.vn_arr]
+      self.write_config(self.well_trained)
     else:
       self.folder_name = NAME_PREFIX
       self.batch_num = batch_num
       load_path = make_path_from_folder_and_batch_num(batch_num)
       print("initializing from path: " + str(load_path))
       self.saver.restore(self.sess, load_path)
-      self.well_trained = self.load_config()
+      self.load_config()
 
   def get_tf_nodes(self):
     vn_arr = self.vn_arr
@@ -198,13 +199,18 @@ class Convbot_Clean(GoBot):
 
 
   def load_config(self):
-    with open(os.path.join(this_dir, 'saved_models', NAME_PREFIX, 'config.json'), 'r') as f:
-      contents = f.read()
-      if not contents:
-        print('NADA')
-        return None
-      print('LOADING CONTENTS')
-      obj = json.loads(contents)
+    try:
+      with open(os.path.join(this_dir, 'saved_models', NAME_PREFIX, 'config.json'), 'r') as f:
+        contents = f.read()
+        if not contents:
+          print('NADA')
+          return None
+        print('LOADING CONTENTS')
+        obj = json.loads(contents)
+        return obj
+    except Exception:
+      print "No Config to load!"
+      obj = [False for f in self.vn_arr]
       return obj
 
   def save_in_next_slot(self):
