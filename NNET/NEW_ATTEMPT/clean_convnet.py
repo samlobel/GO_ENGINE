@@ -169,7 +169,7 @@ class Convbot_Clean(GoBot):
       load_path = make_path_from_folder_and_batch_num(batch_num)
       print("initializing from path: " + str(load_path))
       self.saver.restore(self.sess, load_path)
-      self.load_config()
+      self.well_trained = self.load_config()
 
   def get_tf_nodes(self):
     vn_arr = self.vn_arr

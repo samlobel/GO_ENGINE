@@ -19,6 +19,8 @@ import random
 # BOARDS_FILE = os.path.join(this_dir, 'training_data','random_boards.txt')
 BOARD_SHAPE = (5,5)
 
+TOTAL_NUM_BOARDS = 500
+
 # MIN_TURN=10
 # MAX_TURN=19
 
@@ -113,7 +115,7 @@ if __name__ == '__main__':
   print "making in queue"
   Q_in = Queue()
   print "filling it up"
-  for i in range(50000):
+  for i in range(TOTAL_NUM_BOARDS):
     Q_in.put(i)
   print "Filled"
 
