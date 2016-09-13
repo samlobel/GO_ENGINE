@@ -224,7 +224,8 @@ class Board:
     self.set_scores(0,0)
 
     if self.board_metadata['black_player'] == 'AI':
-      self.board_metadata['black_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
+      self.board_metadata['black_AI'] = clean_convnet.get_best_bot()
+      # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_Clean()
       # Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=3336)
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
@@ -318,7 +319,7 @@ class Board:
       print "no AI for player " + str(turn)
       return
 
-    # time.sleep(0.15)
+    time.sleep(1)
     best_move = the_ai.get_best_move(self.board_data, self.all_previous_boards[-1], self.turn, len(self.all_previous_boards))
     print "best move: " + str(best_move) + " for turn: " + str(self.turn)
     if not util.move_is_valid(self.board_data, best_move, self.turn, self.all_previous_boards[-1]):
