@@ -19,7 +19,7 @@ import random
 # BOARDS_FILE = os.path.join(this_dir, 'training_data','random_boards.txt')
 BOARD_SHAPE = (5,5)
 
-TOTAL_NUM_BOARDS = 100000
+TOTAL_NUM_BOARDS = 1000
 
 # MIN_TURN=10
 # MAX_TURN=19

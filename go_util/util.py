@@ -1019,6 +1019,7 @@ def get_softmax_index(array, temp=0.5):
   transformed_arr = [math.exp(elem / temp) for elem in array]
   sum_transformed = sum(transformed_arr)
   normalized = [elem / sum_transformed for elem in transformed_arr]
+  print normalized
   new_sum = sum(normalized)
   if abs(new_sum-1.0) >= 0.001:
     raise Exception("new sum shuold be very close to one. It's " + str(new_sum))
