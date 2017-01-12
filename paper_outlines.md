@@ -29,11 +29,11 @@ Generally, I trained a value network to correctly predict the outcome of many ga
 ##### Convergence
 This training method is a form of Q-Learning, which is in turn modelled on the Bellman Equation. The Bellman Equation is a statement on optimal decision-making to maximize some expected reward. Simply put, the value of a state is the expected reward recieved going forward, assuming the learner makes decisions in a way that maximizes this reward. In a game with only terminal rewards such as Go (rewards for winning/losing), the value of a state (in go, a board) should be the outcome of each player playing optimally from that point on.
 
-**Bellman Equation:** ![Bellman Equation 02](./Writeup/Bellman_eq_02.svg)
+**Bellman Equation:** ![Bellman Equation 02](./Writeup/Bellman_eq_02.png)
 
 This leads to the idea of Q-Learning, which is an iterative way to solve the Bellman Equation. Q-learning continuously simulates and updates the value of a state to be more like its expected reward (in Go, this means game-outcome). For a NN, this takes the form of regression of predicted-value towards simulated-value. This in turn improves the move-policy from a given board, which in turn moves its simulated-value towards its 'true' value. This type of learning, where one updates a value to be closer to the next timestep's value, is called Temporal Difference (TD) learning. Steady-state is reached when the value function accurately predicts all game outcomes from all boards, given perfect play. This is by necessity iterative, because the value of a state depends on the play-policy from then on.
 
-**Q-learning Update Equation:** ![Q Learning 02](./Writeup/Q_learning_01.svg)
+**Q-learning Update Equation:** ![Q Learning 02](./Writeup/Q_learning_01.png)
 
 ##### Details of training
 Generating the proper value for boards requires end-to-end play, which is a computationally intensive task. And, like most NN problems, the algorithm benefits from multiple viewings of each datapoint. Therefore, instead of generating games on the fly, I wrote a series of functions to generate and serialize 250,000 board inputs and their simulated on-policy outputs, averaged over multiple plays from each board onwards. I trained the value network on these, performing regression so it would output the desired values for a given board. Similarly, to train the policy function, I generated a series of boards, calculated the softmax values of each move from each board, and performed regression from the policy network's output to this desired output.

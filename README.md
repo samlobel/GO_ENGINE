@@ -53,4 +53,4 @@ I start out by thoroughly training the endgame value-function. Once that was goo
 
 ___
 # I want more!
-Look [here](./paper_outlines.md), at my writeup for the class that I started this project for. It's not perfect, but there's a good motivation and theory section. Beware, it's a little outdated, because I've iterated a few times since then.
+Look [here](./paper_outlines.md), at my writeup for the class that I started this project for. It's not perfect, but there's a good motivation and theory section, and some pretty formulas. Beware, it's a little outdated, because I've iterated a few times since then.
