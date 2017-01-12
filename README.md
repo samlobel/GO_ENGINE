@@ -11,7 +11,10 @@ ___
 Download the repo, isntall the requirements (`pip install -r frozen.txt`), navigate to the folder GUI, and type `python go_gui.py`. It's that easy!
 
 ___
+### What if I want to re-train it myself? 
+`sh ./NNET/NEW_ATTEMPT/training_script.sh`
 
+___
 ### How's it work?
 It's sort of based off of AlphaGo. The original iteration had a single value function (a 4-layer CNN), which was trained through self-play. To choose a move, it simulates every possible next state, calculates the value of this next state, and chooses the move that results in the highest value.
 
@@ -53,4 +56,4 @@ I start out by thoroughly training the endgame value-function. Once that was goo
 
 ___
 # I want more!
-Look [here](./paper_outlines.md), at my writeup for the class that I started this project for. It's not perfect, but there's a good motivation and theory section, and some pretty formulas. Beware, it's a little outdated, because I've iterated a few times since then.
+Look [here](./Kearns_Writeup.md), at my writeup for the class that I started this project for. It's not perfect, but there's a good motivation and theory section, and some pretty formulas. Beware, it's a little outdated, because I've iterated a few times since then.
