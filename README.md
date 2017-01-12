@@ -8,7 +8,7 @@ It's a Go AI, written in Python with Tensorflow. Pretty different from AlphaGo. 
 ___
 
 ### How do I play?
-Download the repo, isntall the requirements (`pip install -r frozen.txt`), navigate to the folder GUI, and type `python go_gui.py`. It's that easy!
+Download the repo, isntall the requirements (`pip install -r frozen.txt`), navigate to the folder GUI, and type `python go_gui.py`. It's that easy! To play against the AI, before making any moves, change "black" to "AI" and hit "reset".
 
 ___
 ### What if I want to re-train it myself? 

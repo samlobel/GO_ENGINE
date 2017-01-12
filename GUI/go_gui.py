@@ -32,7 +32,7 @@ from go_util import util
 # from NNET.FIVE.convnet_better_policy_value import Convbot_FIVE_POLICY_VALUE_NEWEST
 from NNET.NEW_ATTEMPT import clean_convnet
 from NNET.NEW_ATTEMPT.clean_convnet import Convbot_Clean
-from NNET.NINE.random_mover import Random_Mover
+from NNET.random_mover import Random_Mover
 
 import time
 
@@ -225,6 +225,7 @@ class Board:
 
     if self.board_metadata['black_player'] == 'AI':
       self.board_metadata['black_AI'] = clean_convnet.get_best_bot()
+      # self.board_metadata['black_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_Clean()
       # Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=3336)
@@ -247,6 +248,8 @@ class Board:
                 
     if self.board_metadata['white_player'] == 'AI':
       self.board_metadata['white_AI'] = clean_convnet.get_best_bot()
+      # self.board_metadata['white_AI'] = Random_Mover(shape=(self.columns.get(),self.columns.get()))
+
       # Random_Mover(shape=(self.columns.get(),self.columns.get()))
       # Convbot_Clean()
       # Convbot_FIVE_POLICY_VALUE_NEWEST(folder_name="test", batch_num=69)
